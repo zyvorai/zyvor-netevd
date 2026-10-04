@@ -1,7 +1,7 @@
 site_name: netevd
 site_description: A Netlink-first Linux network event daemon — run scripts the moment link, address, or route state changes.
-site_url: https://zyvorai.github.io/netevd/
-repo_url: https://github.com/zyvorai/netevd
+site_url: https://zyvorai.github.io/zyvor-netevd/
+repo_url: https://github.com/zyvorai/zyvor-netevd
 repo_name: zyvorai/netevd
 edit_uri: edit/main/docs/
 docs_dir: docs
@@ -76,4 +76,4 @@ nav:
   - License Headers: LICENSE_HEADERS.md
 extra:
   social:
-    - {icon: fontawesome/brands/github, link: https://github.com/zyvorai/netevd}
+    - {icon: fontawesome/brands/github, link: https://github.com/zyvorai/zyvor-netevd}
