@@ -1,16 +1,16 @@
 # netevd
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
-[![CI](https://github.com/zyvorai/netevd/actions/workflows/ci.yml/badge.svg)](https://github.com/zyvorai/netevd/actions/workflows/ci.yml)
-[![Functional Tests](https://github.com/zyvorai/netevd/actions/workflows/functional-tests.yml/badge.svg)](https://github.com/zyvorai/netevd/actions/workflows/functional-tests.yml)
+[![CI](https://github.com/zyvorai/zyvor-netevd/actions/workflows/ci.yml/badge.svg)](https://github.com/zyvorai/zyvor-netevd/actions/workflows/ci.yml)
+[![Functional Tests](https://github.com/zyvorai/zyvor-netevd/actions/workflows/functional-tests.yml/badge.svg)](https://github.com/zyvorai/zyvor-netevd/actions/workflows/functional-tests.yml)
 [![codecov](https://codecov.io/gh/zyvorai/netevd/branch/main/graph/badge.svg)](https://codecov.io/gh/zyvorai/netevd)
-[![Release](https://img.shields.io/github/v/release/zyvorai/netevd?sort=semver)](https://github.com/zyvorai/netevd/releases)
-[![GHCR](https://img.shields.io/badge/GHCR-zyvorai%2Fnetevd-blue?logo=docker)](https://github.com/zyvorai/netevd/pkgs/container/netevd)
+[![Release](https://img.shields.io/github/v/release/zyvorai/zyvor-netevd?sort=semver)](https://github.com/zyvorai/zyvor-netevd/releases)
+[![GHCR](https://img.shields.io/badge/GHCR-zyvorai%2Fnetevd-blue?logo=docker)](https://github.com/zyvorai/zyvor-netevd/pkgs/container/netevd)
 
 [![Book a demo](https://img.shields.io/badge/Book_a_demo-0071e3?style=for-the-badge)](https://zyvor.dev/schedule?utm_source=github&utm_medium=netevd&utm_campaign=readme_hero)
 [![30-day PoC](https://img.shields.io/badge/30--day_PoC-1d1d1f?style=for-the-badge)](https://zyvor.dev/poc?utm_source=github&utm_medium=netevd&utm_campaign=readme_hero)
 
-![netevd — Linux network event daemon](docs/social/netevd-share-card.png)
+![netevd — Linux network event daemon](docs/social/netevd-hero-dark.jpg)
 
 **Kernel events → your scripts.**
 
@@ -55,7 +55,7 @@ When the interface becomes fully routable, that script runs. Same idea for carri
 ### Release tarball (recommended)
 
 ```bash
-curl -LO https://github.com/zyvorai/netevd/releases/download/v0.4.1/netevd-0.4.1-linux-amd64.tar.gz
+curl -LO https://github.com/zyvorai/zyvor-netevd/releases/download/v0.4.1/netevd-0.4.1-linux-amd64.tar.gz
 tar xzf netevd-*-linux-amd64.tar.gz && cd netevd-*-linux-amd64
 sudo ./install.sh && sudo systemctl enable --now netevd
 ```
@@ -63,7 +63,7 @@ sudo ./install.sh && sudo systemctl enable --now netevd
 ### From source
 
 ```bash
-git clone https://github.com/zyvorai/netevd.git && cd netevd
+git clone https://github.com/zyvorai/zyvor-netevd.git && cd netevd
 cargo build --release
 # optional: make -C ebpf && cargo build --release --features ebpf
 sudo install -Dm755 target/release/netevd /usr/bin/netevd
@@ -218,7 +218,7 @@ cargo build && cargo test && cargo clippy -- -D warnings
 
 | | Community (this repo) | Enterprise |
 |---|----------------------|------------|
-| Support | [GitHub Issues](https://github.com/zyvorai/netevd/issues) | SLA · [sales@zyvor.dev](mailto:sales@zyvor.dev) |
+| Support | [GitHub Issues](https://github.com/zyvorai/zyvor-netevd/issues) | SLA · [sales@zyvor.dev](mailto:sales@zyvor.dev) |
 | Scope | Self-hosted hooks + policy routing | Production rollouts, platform integration |
 | Platform | netevd | netctl, cloud-netconfig, Zyvor Platform |
 
@@ -228,7 +228,7 @@ cargo build && cargo test && cargo clippy -- -D warnings
 
 [Book a demo](https://zyvor.dev/schedule?utm_source=github&utm_medium=netevd&utm_campaign=readme_footer) · [30-day PoC](https://zyvor.dev/poc?utm_source=github&utm_medium=netevd&utm_campaign=readme_footer) · fallback: [sales@zyvor.dev](mailto:sales@zyvor.dev)
 
-Maintained by **Susant Sahani** · [Zyvor AI Labs](https://zyvor.dev/?utm_source=github&utm_medium=netevd&utm_campaign=readme_footer). Community help: [Issues](https://github.com/zyvorai/netevd/issues) · [SECURITY.md](SECURITY.md).
+Maintained by **Susant Sahani** · [Zyvor AI Labs](https://zyvor.dev/?utm_source=github&utm_medium=netevd&utm_campaign=readme_footer). Community help: [Issues](https://github.com/zyvorai/zyvor-netevd/issues) · [SECURITY.md](SECURITY.md).
 
 ## License
 
