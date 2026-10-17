@@ -36,7 +36,7 @@ Version 0.4.1 ([CHANGELOG.md](CHANGELOG.md)):
 |---|---|
 | **Observe-only eBPF** | `--features ebpf`: `kfree_skb` → `drops.d`, `tcp_retransmit_skb` → `tcp-retransmit.d`, `tcp_*_reset` → `tcp-reset.d`, with ringbuf drain, CO-RE ports/L4, coalescing and interface/reason filters. |
 | **eBPF metrics** | Prometheus `netevd_ebpf_*` on the API port (`:9090/metrics`). |
-| **Container images** | `ghcr.io/zyvorai/netevd:latest-ubuntu` (Ubuntu 26.04) and `:latest-alpine` (Alpine 3.23). |
+| **Container images** | `ghcr.io/zyvorai/netevd:latest` (= `:latest-alpine`, Alpine 3.23, the scanned default) and `:latest-ubuntu` (Ubuntu 26.04; carries unpatched upstream base-image CVEs). |
 | **Remote lab prove** | `scripts/deploy-remote.sh` builds with eBPF, installs the BPF object and unit drop-in, and checks attach plus observe hooks. |
 
 ---
@@ -139,7 +139,7 @@ sudo systemctl enable --now netevd
 ### Container
 
 ```bash
-docker pull ghcr.io/zyvorai/netevd:latest-ubuntu   # or :latest-alpine
+docker pull ghcr.io/zyvorai/netevd:latest   # Alpine; or :latest-ubuntu
 ```
 
 Images ship on every `main` push. Hook scripts have `bash` and `ip`; D-Bus uses zbus (no `dbus`/`systemd` in the image).

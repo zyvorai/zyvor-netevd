@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Container: `:latest` now points at the Alpine image, and the Trivy container scan covers it. The Ubuntu 26.04 image's
+  base packages (`rust-coreutils`, glibc, `tar`, ...) have open CVEs with no upstream fix; `:latest-ubuntu` is still built.
+
 ## 0.4.1 — 2026-09-22
 
 - **Observe-only eBPF** (`--features ebpf`): `kfree_skb` → `drops.d`, `tcp_retransmit_skb` → `tcp-retransmit.d`, `tcp_*_reset` → `tcp-reset.d`, with ringbuf drain, CO-RE ports/L4, coalesce, iface/reason filters, and Prometheus `netevd_ebpf_*` metrics.
