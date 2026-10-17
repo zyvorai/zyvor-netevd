@@ -72,8 +72,17 @@ jobs:
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
+      packages: read
       security-events: write
     steps:
+      # The image package is private until made public, so the scanner must authenticate to pull it.
+      - name: Log in to Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
