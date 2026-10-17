@@ -28,8 +28,8 @@ arm64 asset: `netevd-0.4.1-linux-arm64.tar.gz`.
 
 | Tag | Runtime |
 |-----|---------|
-| `latest-ubuntu` | glibc (Ubuntu 26.04) |
-| `latest-alpine` | musl (Alpine 3.23) |
+| `latest`, `latest-alpine` | musl (Alpine 3.23), the default and the one scanned for vulnerabilities |
+| `latest-ubuntu` | glibc (Ubuntu 26.04); the base image has unpatched CVEs with no upstream fix yet |
 
 **Remote host:**
 
