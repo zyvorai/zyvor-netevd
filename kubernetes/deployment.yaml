@@ -38,6 +38,8 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+            - SETUID  # needed by drop_privileges
+            - SETGID
             drop:
             - ALL
           privileged: false
