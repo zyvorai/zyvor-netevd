@@ -22,6 +22,7 @@ use tokio::sync::RwLock;
 use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 
+mod api;
 mod audit;
 mod bus;
 mod cli;
@@ -171,6 +172,10 @@ async fn main() -> Result<()> {
     let hook_tx_route = hook_tx.clone();
     let hook_tx_link = hook_tx;
 
+    // REST API / health / metrics server (non-fatal if it cannot start)
+    let api_config = config.api.clone();
+    let state_api = state.clone();
+
     // Set up signal handlers
     let mut sigterm =
         signal(SignalKind::terminate()).context("Failed to set up SIGTERM handler")?;
@@ -198,6 +203,7 @@ async fn main() -> Result<()> {
         result = spawn_listener(config_listener, handle_listener, state_listener, metrics_listener, audit_listener) => {
             warn!("Backend listener exited: {:?}", result);
         }
+        _ = run_api_server(api_config, state_api) => {}
         result = hook_service => {
             warn!("Hook dispatch service exited: {:?}", result);
         }
@@ -205,6 +211,25 @@ async fn main() -> Result<()> {
 
     info!("netevd shutdown complete");
     Ok(())
+}
+
+/// Run the REST API server if enabled. Failures are logged and never stop the
+/// daemon; when disabled or failed this future stays pending so it does not
+/// complete the main `select!`.
+async fn run_api_server(cfg: config::ApiConfig, state: Arc<RwLock<NetworkState>>) {
+    if cfg.enabled {
+        match api::ApiServer::with_bind_address(&cfg.bind_address, cfg.port, state) {
+            Ok(server) => {
+                if let Err(e) = server.run().await {
+                    warn!("API server exited: {:?}", e);
+                }
+            }
+            Err(e) => warn!("API server not started: {:?}", e),
+        }
+    } else {
+        info!("API server disabled");
+    }
+    std::future::pending::<()>().await
 }
 
 /// Initialize logging with the given default level (RUST_LOG env takes precedence)
