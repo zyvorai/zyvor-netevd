@@ -183,30 +183,39 @@ async fn main() -> Result<()> {
 
     info!("netevd initialized successfully, waiting for events...");
 
-    // Main event loop with async watchers
-    tokio::select! {
+    // Main event loop with async watchers. A signal is a clean shutdown; any
+    // watcher, listener or the hook service ending is a failure, so exit
+    // non-zero and let `Restart=on-failure` in netevd.service restart us.
+    let failure: Option<String> = tokio::select! {
         _ = sigterm.recv() => {
             info!("Received SIGTERM, shutting down gracefully");
+            None
         }
         _ = sigint.recv() => {
             info!("Received SIGINT (Ctrl+C), shutting down gracefully");
+            None
         }
         result = watcher::watch_addresses(handle_addr, state_addr, routing_policy_interfaces, hook_selector_addr, hook_tx_addr) => {
-            warn!("Address watcher exited: {:?}", result);
+            Some(format!("Address watcher exited: {:?}", result))
         }
         result = watcher::watch_routes(handle_route, state_route, hook_tx_route) => {
-            warn!("Route watcher exited: {:?}", result);
+            Some(format!("Route watcher exited: {:?}", result))
         }
         result = watcher::watch_links(handle_link, state_link, hook_selector_link, hook_tx_link) => {
-            warn!("Link watcher exited: {:?}", result);
+            Some(format!("Link watcher exited: {:?}", result))
         }
         result = spawn_listener(config_listener, handle_listener, state_listener, metrics_listener, audit_listener) => {
-            warn!("Backend listener exited: {:?}", result);
+            Some(format!("Backend listener exited: {:?}", result))
         }
-        _ = run_api_server(api_config, state_api) => {}
+        _ = run_api_server(api_config, state_api) => None,
         result = hook_service => {
-            warn!("Hook dispatch service exited: {:?}", result);
+            Some(format!("Hook dispatch service exited: {:?}", result))
         }
+    };
+
+    if let Some(reason) = failure {
+        warn!("{}", reason);
+        anyhow::bail!(reason);
     }
 
     info!("netevd shutdown complete");
