@@ -65,7 +65,7 @@ Version 0.4.1 ([CHANGELOG.md](CHANGELOG.md)):
 | Where it works | systemd-networkd, NetworkManager and dhclient hosts | Devices managed by NetworkManager |
 | Event source | Netlink multicast, backend D-Bus or dhclient leases, optional eBPF ringbuf | NetworkManager's own device and connection actions |
 | Script contract | `/etc/netevd/<event>.d/`, 17 directories, `$LINK`, `$STATE`, `$ADDRESSES`, versioned `$JSON` | `/etc/NetworkManager/dispatcher.d/` with interface and action arguments plus environment |
-| Multi-homed return path | Automatic per-interface tables (`200 + ifindex`) and `from`/`to` rules | Write it in your scripts |
+| Multi-homed return path | Automatic per-interface tables (`1000 + ifindex`) and `from`/`to` rules | Write it in your scripts |
 | Silent drops and TCP resets | Opt-in eBPF tracepoints → `drops.d`, `tcp-retransmit.d`, `tcp-reset.d` | Not in scope |
 | API and metrics | REST `/api/v1/*`, Prometheus `/metrics` on `:9090` | Not included |
 | **Choose NetworkManager dispatcher when** | | Every host runs NetworkManager and plain per-action scripts are all you need |
@@ -196,16 +196,16 @@ Every script gets `$LINK`, `$LINKINDEX`, `$STATE`, `$BACKEND`, `$ADDRESSES` (plu
 
 List an interface under `routing.policy_rules` and netevd:
 
-1. Creates table `200 + ifindex`  
+1. Creates table `1000 + ifindex`  
 2. Adds `from <ip>` / `to <ip>` lookup rules  
 3. Installs a default via that interface’s gateway  
 4. Tears it down when addresses leave  
 
 ```bash
 $ ip rule list
-32765: from 192.168.1.100 lookup 203
+32765: from 192.168.1.100 lookup 1003
 
-$ ip route show table 203
+$ ip route show table 1003
 default via 192.168.1.1 dev eth1
 ```
 
