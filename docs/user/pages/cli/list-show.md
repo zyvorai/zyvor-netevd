@@ -40,7 +40,7 @@ netevd list routes
 ```bash
 netevd list rules
 ip rule list
-ip route show table $((200 + $(cat /sys/class/net/eth1/ifindex)))
+ip route show table $((1000 + $(cat /sys/class/net/eth1/ifindex)))
 ```
 
 4. List hook scripts discovered under `/etc/netevd/*.d/`:
