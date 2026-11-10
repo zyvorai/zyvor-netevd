@@ -74,7 +74,7 @@ Env: `$LINK`, `$LINKINDEX`, `$STATE`, `$BACKEND`, `$ADDRESSES` (+ `$JSON` / DHCP
 ## PR-2 — Policy routing v2 (multi-homed that actually survives)
 
 ### Already have
-Table ID `200 + ifindex`, `from <ip> lookup`, `to <ip> lookup`, default via gateway, cleanup on addr delete.
+Table ID `1000 + ifindex`, `from <ip> lookup`, `to <ip> lookup`, default via gateway, cleanup on addr delete.
 
 ### Add
 

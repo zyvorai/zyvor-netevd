@@ -29,7 +29,7 @@ netevd validate
 sudo systemctl restart netevd
 netevd list rules
 ip rule list
-ip route show table $((200 + $(cat /sys/class/net/eth1/ifindex)))
+ip route show table $((1000 + $(cat /sys/class/net/eth1/ifindex)))
 ```
 
 Traffic sourced from an address on `eth1` should leave via `eth1`'s gateway.
