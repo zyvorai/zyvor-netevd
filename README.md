@@ -18,6 +18,8 @@
 
 ### Kernel events → your scripts.
 
+[Client overview (PDF)](docs/netevd-Client-Overview.pdf)
+
 **A small Linux daemon that turns network events into drop-in hook scripts.** netevd listens to netlink (and opt-in eBPF) across systemd-networkd, NetworkManager and dhclient, runs your `/etc/netevd/<event>.d/` scripts, fixes multi-homed return paths with automatic policy routing, and exposes a REST API and Prometheus metrics.
 
 **3 network backends** · **17 hook directories** · **Zero polling** · **Automatic policy routing** · **Opt-in eBPF drops and resets**
