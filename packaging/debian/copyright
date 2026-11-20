@@ -5,10 +5,8 @@ Source: https://github.com/zyvorai/netevd
 
 Files: *
 Copyright: 2026 Zyvor AI Labs Private Limited <legal@zyvor.dev>
-License: Apache-2.0
-
-License: Apache-2.0
- Licensed under the Apache License, Version 2.0 (the "License");
+License: LicenseRef-Zyvor-Production-1.0
+License: LicenseRef-Zyvor-Production-1.0 Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
  .

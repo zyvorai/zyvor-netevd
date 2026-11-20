@@ -1,5 +1,5 @@
 // Copyright 2026 Zyvor AI Labs · https://zyvor.dev
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Zyvor-Production-1.0
 //
 // Observe-only. Never returns XDP_DROP / TC_ACT_SHOT.
 // Layout must match src/ebpf/events.rs :: ObsEvent.

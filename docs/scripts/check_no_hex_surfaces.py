@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2026 ZyvorAI Labs Private Limited
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-Zyvor-Production-1.0
 """Fail if raw hex/rgb color literals appear outside the token file.
 
 Mirrors the discipline enforced on the React dashboard by

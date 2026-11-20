@@ -1,5 +1,5 @@
 // Copyright 2026 Zyvor AI Labs · https://zyvor.dev
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: LicenseRef-Zyvor-Production-1.0
 //
 // Std-only copy of the hook contract so `rustc --test` can run without cargo.
 // Production modules (event.rs etc.) keep serde/chrono for the daemon tree.

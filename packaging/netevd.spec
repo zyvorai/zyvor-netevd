@@ -3,8 +3,7 @@ Version:        0.1.0
 Release:        1%{?dist}
 Summary:        Network event daemon for systemd-networkd and NetworkManager
 
-License:        Apache-2.0
-URL:            https://github.com/ssahani/netevd
+License:        LicenseRef-Zyvor-Production-1.0URL:            https://github.com/ssahani/netevd
 Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
 
 BuildRequires:  rust >= 1.70

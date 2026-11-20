@@ -2,7 +2,7 @@
 name = "netevd-hooks"
 version = "0.3.3"
 edition = "2021"
-license = "Apache-2.0"
+license = "LicenseRef-Zyvor-Production-1.0"
 description = "netevd hook contract (event v1, debounce, match, dispatch)"
 publish = false
 

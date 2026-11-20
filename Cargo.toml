@@ -6,7 +6,7 @@ edition = "2021"
 # sync with the `msrv` job in .github/workflows/cross-platform.yml.
 rust-version = "1.87"
 authors = ["ZyvorAI Labs Private Limited <info@zyvor.dev>"]
-license = "Apache-2.0"
+license = "LicenseRef-Zyvor-Production-1.0"
 description = "High-performance network event daemon for systemd-networkd, NetworkManager, and dhclient with routing policy rules and script execution"
 repository = "https://github.com/zyvorai/netevd"
 homepage = "https://github.com/zyvorai/netevd"
