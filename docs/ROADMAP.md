@@ -8,7 +8,7 @@ Repo: https://github.com/zyvorai/netevd
 Status checked: 2026-09-07 — no open PRs, no open issues on zyvorai/netevd.  
 Current surface: netlink watchers (addr/link/route), systemd-networkd / NetworkManager / dhclient backends, hook dirs, automatic policy routing, Axum REST + Prometheus, privilege drop + CAP_NET_ADMIN.
 
-This pack is a single PR *plan*, not a dump of unrelated ideas. Keep Community Edition small. Push SLA / multi-cluster / GUI into Enterprise.
+This pack is a single PR *plan*, not a dump of unrelated ideas. Keep netevd small. Push SLA / multi-cluster / GUI into Enterprise.
 
 ---
 
@@ -139,7 +139,7 @@ Web UI beyond a tiny status page. Machina/Fabric already own glass UI.
 
 ---
 
-## Do **not** add in Community (or park as Enterprise)
+## Do **not** add to netevd (or park as Enterprise)
 
 | Idea | Why not now |
 |------|-------------|

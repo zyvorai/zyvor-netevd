@@ -40,6 +40,6 @@ netevd_ebpf_attached
 Install `systemd/netevd-ebpf.conf` as
 `/etc/systemd/system/netevd.service.d/ebpf.conf`.
 
-## Still not in Community
+## Still not in netevd
 
 XDP shield, cgroup deny, DNS qname, process `comm` — that is Netra.

@@ -68,7 +68,7 @@ Version 0.4.1 ([CHANGELOG.md](CHANGELOG.md)):
 | Latency | &lt;100 ms netlink · zero polling |
 | eBPF | Opt-in observe-only: drops / TCP retransmit / TCP reset |
 | Ops | Policy routing · REST `:9090` · Prometheus `/metrics` |
-| License | Zyvor Production License 1.0 (free non-production) |
+| License | Zyvor Production License 1.0 (commercial license required; 30-day trial key) |
 
 ```mermaid
 flowchart LR
@@ -251,11 +251,9 @@ cargo build && cargo test && cargo clippy -- -D warnings
 
 ## Enterprise
 
-| | Community (this repo) | Enterprise |
-|---|----------------------|------------|
-| Support | [GitHub Issues](https://github.com/zyvorai/zyvor-netevd/issues) | SLA · [sales@zyvor.dev](mailto:sales@zyvor.dev) |
-| Scope | Self-hosted hooks + policy routing | Production rollouts, platform integration |
-| Platform | netevd | netctl, cloud-netconfig, Zyvor Platform |
+- **Support:** SLA · [sales@zyvor.dev](mailto:sales@zyvor.dev)
+- **Scope:** self-hosted hooks + policy routing, production rollouts, platform integration
+- **Platform:** netevd, netctl, cloud-netconfig, Zyvor Platform
 
 [Demo](https://zyvor.dev/demo?utm_source=github&utm_medium=netevd&utm_campaign=readme_edition) · [Pricing](https://zyvor.dev/pricing?utm_source=github&utm_medium=netevd&utm_campaign=readme_edition) · [Contact](https://zyvor.dev/contact?utm_source=github&utm_medium=netevd&utm_campaign=readme_edition) · [docs/enterprise.md](docs/enterprise.md)
 
@@ -263,7 +261,7 @@ cargo build && cargo test && cargo clippy -- -D warnings
 
 [Book a demo](https://zyvor.dev/schedule?utm_source=github&utm_medium=netevd&utm_campaign=readme_footer) · [30-day PoC](https://zyvor.dev/poc?utm_source=github&utm_medium=netevd&utm_campaign=readme_footer) · fallback: [sales@zyvor.dev](mailto:sales@zyvor.dev)
 
-Maintained by **Susant Sahani** · [Zyvor AI Labs](https://zyvor.dev/?utm_source=github&utm_medium=netevd&utm_campaign=readme_footer). Community help: [Issues](https://github.com/zyvorai/zyvor-netevd/issues) · [SECURITY.md](SECURITY.md).
+Maintained by **Susant Sahani** · [Zyvor AI Labs](https://zyvor.dev/?utm_source=github&utm_medium=netevd&utm_campaign=readme_footer). Issues: [Issues](https://github.com/zyvorai/zyvor-netevd/issues) · [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -299,7 +297,7 @@ Enterprise rollouts cover netevd together with netctl and cloud-netconfig.
 
 ## Donate
 
-Non-production use is free under the Zyvor Production License v1.0; production use requires a commercial license (sales@zyvor.dev). If it helps you, you can donate any amount you like: <https://zyvor.dev/donate>. A donation is voluntary and supports development and maintenance. It is not a purchase: it buys no support, SLA, features, priority or license, and it is not tax-deductible (Zyvor AI Labs Private Limited is a company, not a charity). Support contracts are separate: [sales@zyvor.dev](mailto:sales@zyvor.dev).
+A commercial license is required to run it (sales@zyvor.dev); a 30-day trial key is how to evaluate. If it helps you, you can donate any amount you like: <https://zyvor.dev/donate>. A donation is voluntary and supports development and maintenance. It is not a purchase: it buys no support, SLA, features, priority or license, and it is not tax-deductible (Zyvor AI Labs Private Limited is a company, not a charity). Support contracts are separate: [sales@zyvor.dev](mailto:sales@zyvor.dev).
 
 ## License
 

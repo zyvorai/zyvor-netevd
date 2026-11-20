@@ -1,17 +1,16 @@
 # netevd: support subscriptions
 
-netevd is source-available software. Non-production use is free under the Zyvor Production License v1.0; production use requires a commercial license (sales@zyvor.dev).
+netevd is source-available software. A commercial license is required to run it (sales@zyvor.dev); a 30-day trial key is how to evaluate.
 
 Teams that want supported releases and defined response targets can buy an annual **support subscription** from Zyvor.
 
 | Plan | What you get | Coverage |
 |------|--------------|----------|
-| Community | The software, community documentation and public issue tracking | No contracted response target |
 | Standard | Deployment and upgrade guidance, defined supported configuration | Business hours |
 | Supported | Standard plus priority queue and incident triage | Business hours, faster response |
 | Enterprise | Supported plus a named technical contact and 24x7 critical intake | One-hour initial response target for critical issues |
 
-Rates (one meter, no stacking): the Zyvor Support meter is per worker node per year and covers all Zyvor infrastructure software on a covered node; non-production use of the software stays free; production use requires a commercial license.
+Rates (one meter, no stacking): the Zyvor Support meter is per worker node per year and covers all Zyvor infrastructure software on a covered node; a commercial license is required to run the software.
 
 | Tier | Rest of world (USD, excl. tax) | India (INR, incl. 18% GST) | Minimum |
 |------|-------------------------------|----------------------------|---------|

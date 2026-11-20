@@ -10,17 +10,15 @@ FAQ covers what that section doesn't.
 
 ## Licensing & cost
 
-**Is the Community Edition really free?** For non-production use, yes: evaluation,
-development, testing, research and education are free under the Zyvor Production
-License v1.0. Production use requires a commercial license (sales@zyvor.dev,
-https://zyvor.dev/buy).
+**Do I need a license?** Yes. Running netevd requires a commercial license under the
+Zyvor Production License v1.0 (sales@zyvor.dev, https://zyvor.dev/buy; a 30-day
+trial key is how to evaluate).
 See the README's [License](https://github.com/zyvorai/netevd#license) section.
 
-**What's the difference between Community and Enterprise?** See the
+**What does the Enterprise license include?** See the
 README's [Enterprise](https://github.com/zyvorai/netevd#enterprise) section and
-[`docs/enterprise.md`](enterprise.md) for the full comparison table —
-briefly: Community is the self-hosted daemon with GitHub Issues support;
-Enterprise adds SLA-backed support and the broader HyperSDK
+[`docs/enterprise.md`](enterprise.md) —
+briefly: the self-hosted daemon, SLA-backed support and the broader HyperSDK
 platform (`netctl`, `cloud-netconfig`).
 
 ## Support
@@ -31,8 +29,8 @@ platform (`netctl`, `cloud-netconfig`).
 for private reporting to legal@zyvor.dev — response SLA is documented
 there (initial response within 48 hours; critical fixes within 7 days).
 
-**Is there a support SLA for Community Edition?** No — that's specifically
-what the Enterprise tier adds. Community support is via GitHub Issues.
+**Is there a support SLA?** SLA-backed support is part of the Enterprise
+license (sales@zyvor.dev). Bugs are tracked via GitHub Issues.
 
 ## Production readiness
 

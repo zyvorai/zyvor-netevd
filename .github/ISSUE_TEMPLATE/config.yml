@@ -20,7 +20,7 @@ contact_links:
     about: When to use GitHub vs contact Zyvor for a production license
   - name: "Discussions"
     url: https://github.com/zyvorai/netevd/discussions
-    about: Community questions and ideas
+    about: Questions and ideas
   - name: "Security"
     url: https://github.com/zyvorai/netevd/blob/main/SECURITY.md
     about: Report vulnerabilities privately

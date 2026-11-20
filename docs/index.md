@@ -12,7 +12,7 @@ hero:
     - {value: "9", label: "REST API endpoints", footnote: "3"}
   hub_bands:
     - {icon: "❓", title: "FAQ", description: "Licensing, support, production readiness, and platform questions.", href: FAQ.md}
-    - {icon: "🏢", title: "Community Edition vs Enterprise", description: "Feature and support comparison.", href: enterprise.md}
+    - {icon: "🏢", title: "Enterprise license", description: "What the license includes.", href: enterprise.md}
     - {icon: "📘", title: "User documentation", description: "Installation, CLI, hooks, and the operator surfaces.", href: user/README.md}
     - {icon: "📡", title: "Observe-only eBPF", description: "Packet drops, TCP retransmit, and TCP reset hooks.", href: user/ebpf.md}
     - {icon: "🖥️", title: "Using the operator surfaces", description: "CLI, REST API, Prometheus, and journal-based operation.", href: user/using-the-dashboard.md}
@@ -42,7 +42,7 @@ See the full [README on GitHub](https://github.com/zyvorai/netevd) for the compl
 ## Start here
 
 - [FAQ](FAQ.md) — licensing, support, production readiness, and platform questions
-- [Community Edition vs Enterprise](enterprise.md) — feature and support comparison
+- [Enterprise license](enterprise.md) — what the license includes
 - [User documentation](user/README.md) — installation, CLI, hooks, and the operator surfaces
 - [Using the operator surfaces](user/using-the-dashboard.md) — CLI, REST API, Prometheus, and journal-based operation
 - [Getting started](user/getting-started.md) — install netevd and fire your first hook
