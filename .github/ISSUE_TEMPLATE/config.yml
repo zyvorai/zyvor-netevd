@@ -2,7 +2,7 @@ blank_issues_enabled: false
 contact_links:
   - name: "Sponsor development (Razorpay)"
     url: https://rzp.io/rzp/utwdYh3
-    about: Support open-source maintenance by Susant Sahani — not required to use CE
+    about: Support maintenance by Susant Sahani — not required
   - name: "Watch platform demo"
     url: https://zyvor.dev/demo?utm_source=github&utm_medium=netevd
     about: Migration video and live dashboard — HyperSDK platform overview
@@ -15,9 +15,9 @@ contact_links:
   - name: "ROI calculator"
     url: https://zyvor.dev/roi?utm_source=github&utm_medium=netevd
     about: Estimate migration and infrastructure savings
-  - name: "CE vs Enterprise"
+  - name: "Production licensing"
     url: https://github.com/zyvorai/netevd/blob/main/docs/enterprise.md
-    about: When to use GitHub vs contact Zyvor for production
+    about: When to use GitHub vs contact Zyvor for a production license
   - name: "Discussions"
     url: https://github.com/zyvorai/netevd/discussions
     about: Community questions and ideas

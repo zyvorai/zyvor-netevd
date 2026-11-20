@@ -18,7 +18,6 @@
 
 ### Kernel events → your scripts.
 
-[Client overview (PDF)](docs/netevd-Client-Overview.pdf)
 
 **A small Linux daemon that turns network events into drop-in hook scripts.** netevd listens to netlink (and opt-in eBPF) across systemd-networkd, NetworkManager and dhclient, runs your `/etc/netevd/<event>.d/` scripts, fixes multi-homed return paths with automatic policy routing, and exposes a REST API and Prometheus metrics.
 
@@ -55,22 +54,6 @@ Version 0.4.1 ([CHANGELOG.md](CHANGELOG.md)):
 | Hand-rolled netlink + debounce + safe exec | Already done — with validated `$LINK` / `$JSON` |
 
 ![Capabilities at a glance: Hook, Route, Observe, Operate](docs/ux/readme-capabilities.jpg)
-
----
-
-## netevd vs NetworkManager dispatcher
-
-![netevd vs NetworkManager dispatcher: one hook contract, every backend](docs/ux/readme-vs.jpg)
-
-| | **netevd** | **NetworkManager dispatcher** |
-|---|---|---|
-| Where it works | systemd-networkd, NetworkManager and dhclient hosts | Devices managed by NetworkManager |
-| Event source | Netlink multicast, backend D-Bus or dhclient leases, optional eBPF ringbuf | NetworkManager's own device and connection actions |
-| Script contract | `/etc/netevd/<event>.d/`, 17 directories, `$LINK`, `$STATE`, `$ADDRESSES`, versioned `$JSON` | `/etc/NetworkManager/dispatcher.d/` with interface and action arguments plus environment |
-| Multi-homed return path | Automatic per-interface tables (`1000 + ifindex`) and `from`/`to` rules | Write it in your scripts |
-| Silent drops and TCP resets | Opt-in eBPF tracepoints → `drops.d`, `tcp-retransmit.d`, `tcp-reset.d` | Not in scope |
-| API and metrics | REST `/api/v1/*`, Prometheus `/metrics` on `:9090` | Not included |
-| **Choose NetworkManager dispatcher when** | | Every host runs NetworkManager and plain per-action scripts are all you need |
 
 ---
 

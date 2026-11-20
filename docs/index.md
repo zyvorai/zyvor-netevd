@@ -2,7 +2,7 @@
 hero:
   eyebrow: PRODUCT
   title: netevd
-  lead: "netevd runs your scripts the moment something changes on a Linux network interface — link up/down, a new IP, a route change — instead of a NetworkManager dispatcher script, a systemd-networkd ExecStartPost hack, or a cron job polling ip addr."
+  lead: "netevd runs your scripts the moment something changes on a Linux network interface — link up/down, a new IP, a route change — instead of an ad-hoc dispatcher script, a systemd-networkd ExecStartPost hack, or a cron job polling ip addr."
   highlights:
     - {value: "3", label: "backends, one event system"}
     - {value: "17", label: "hook directories", footnote: "1"}
@@ -24,7 +24,7 @@ footnotes:
   - {marker: "3", text: "9 REST endpoints for status, interfaces, routes, events, and metrics.", href: "https://github.com/zyvorai/netevd#rest-api", href_label: "See REST API in the README."}
 ---
 
-**netevd** runs your scripts the moment something changes on a Linux network interface — link up/down, a new IP, a route change — instead of you writing a NetworkManager dispatcher script, a systemd-networkd `ExecStartPost` hack, or a cron job that polls `ip addr` every few seconds. It bridges **systemd-networkd**, **NetworkManager**, and **dhclient** into one event system, with sub-100ms netlink-driven latency, **opt-in eBPF observation** for silent packet drops and TCP health, automatic policy routing for multi-homed hosts, a REST API, Prometheus metrics, and a defense-in-depth security model.
+**netevd** runs your scripts the moment something changes on a Linux network interface — link up/down, a new IP, a route change — instead of you writing an ad-hoc dispatcher script, a systemd-networkd `ExecStartPost` hack, or a cron job that polls `ip addr` every few seconds. It bridges **systemd-networkd**, **NetworkManager**, and **dhclient** into one event system, with sub-100ms netlink-driven latency, **opt-in eBPF observation** for silent packet drops and TCP health, automatic policy routing for multi-homed hosts, a REST API, Prometheus metrics, and a defense-in-depth security model.
 
 See the full [README on GitHub](https://github.com/zyvorai/netevd) for the complete feature tour, quick start, configuration reference, and security/performance details.
 
