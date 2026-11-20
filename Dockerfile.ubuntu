@@ -1,0 +1,55 @@
+# Copyright 2026 Zyvor AI Labs · https://zyvor.dev
+# SPDX-License-Identifier: LicenseRef-Zyvor-Production-1.0
+# Ubuntu glibc image for netevd.
+
+# Build stage. The official Rust image is Debian-based; the binary links
+# glibc and runs on the Ubuntu runtime below.
+FROM rust:1-bookworm AS builder
+
+WORKDIR /build
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libdbus-1-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+COPY benches ./benches
+
+RUN cargo build --release
+
+# Runtime stage
+FROM ubuntu:26.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# bash and ip for hook scripts.
+# dbus and systemd are not installed; netevd speaks D-Bus with zbus
+# to the host broker.
+RUN apt-get update && \
+    apt-get upgrade -y --no-install-recommends && \
+    apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
+    iproute2 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --system --no-create-home --shell /usr/sbin/nologin netevd
+
+COPY --from=builder /build/target/release/netevd /usr/bin/netevd
+COPY config/netevd.example.yaml /etc/netevd/netevd.yaml
+
+RUN mkdir -p /etc/netevd/{carrier.d,no-carrier.d,configured.d,degraded.d,routable.d,activated.d,disconnected.d,manager.d,routes.d}
+
+# Start as root so the daemon can drop to the netevd user and keep
+# CAP_NET_ADMIN. A setcap'd binary cannot be executed under Docker's
+# default security profile (exec returns EPERM).
+USER root
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD /usr/bin/netevd --version || exit 1
+
+ENTRYPOINT ["/usr/bin/netevd"]
+CMD ["--config", "/etc/netevd/netevd.yaml"]

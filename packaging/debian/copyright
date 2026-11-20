@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: netevd
+Upstream-Contact: Zyvor AI Labs Private Limited <legal@zyvor.dev>
+Source: https://github.com/zyvorai/netevd
+
+Files: *
+Copyright: 2026 Zyvor AI Labs Private Limited <legal@zyvor.dev>
+License: LicenseRef-Zyvor-Production-1.0
+
+License: LicenseRef-Zyvor-Production-1.0
+ Zyvor Production License v1.0. Non-production use (evaluation, development,
+ testing, research, education) is free. Production use requires a commercial
+ license from Zyvor AI Labs Private Limited (sales@zyvor.dev). The complete
+ license text is in the LICENSE file and in
+ LICENSES/LicenseRef-Zyvor-Production-1.0.txt of the source package.

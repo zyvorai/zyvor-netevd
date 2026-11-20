@@ -1,0 +1,59 @@
+# Copyright 2026 Zyvor AI Labs · https://zyvor.dev
+# SPDX-License-Identifier: LicenseRef-Zyvor-Production-1.0
+# Alpine-based Docker image for netevd
+# Smaller size, minimal footprint
+
+# Build stage
+FROM rust:1-alpine as builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apk add --no-cache \
+    musl-dev \
+    dbus-dev \
+    pkgconfig
+
+# Copy manifests
+COPY Cargo.toml Cargo.lock ./
+
+# Copy source
+COPY src ./src
+COPY benches ./benches
+
+# Build static binary
+ENV RUSTFLAGS="-C target-feature=+crt-static"
+RUN cargo build --release --target x86_64-unknown-linux-musl
+
+# Runtime stage
+FROM alpine:3.23
+
+# Install minimal runtime dependencies
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
+    bash \
+    iproute2 \
+    ca-certificates
+
+# Create netevd user
+RUN adduser -D -H -s /sbin/nologin netevd
+
+# Copy binary from builder
+COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/netevd /usr/bin/netevd
+
+# Copy configuration
+COPY config/netevd.example.yaml /etc/netevd/netevd.yaml
+
+# Create script directories
+RUN mkdir -p /etc/netevd/{carrier.d,no-carrier.d,configured.d,degraded.d,routable.d,activated.d,disconnected.d,manager.d,routes.d}
+
+# Start as root so the daemon can drop to the netevd user. A setcap'd
+# binary cannot be executed under Docker's default security profile.
+USER root
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD /usr/bin/netevd --version || exit 1
+
+ENTRYPOINT ["/usr/bin/netevd"]
+CMD ["--config", "/etc/netevd/netevd.yaml"]

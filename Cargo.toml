@@ -1,0 +1,125 @@
+[package]
+name = "netevd"
+version = "0.4.1"
+edition = "2021"
+# Floor set by zbus/zvariant 5.15's own declared rust-version — keep this in
+# sync with the `msrv` job in .github/workflows/cross-platform.yml.
+rust-version = "1.87"
+authors = ["ZyvorAI Labs Private Limited <info@zyvor.dev>"]
+license = "LicenseRef-Zyvor-Production-1.0"
+description = "High-performance network event daemon for systemd-networkd, NetworkManager, and dhclient with routing policy rules and script execution"
+repository = "https://github.com/zyvorai/netevd"
+homepage = "https://github.com/zyvorai/netevd"
+documentation = "https://github.com/zyvorai/netevd/blob/main/README.md"
+readme = "README.md"
+keywords = ["networking", "systemd", "dhclient", "netlink", "dbus"]
+categories = ["network-programming", "os::linux-apis"]
+exclude = [
+    "packaging/*",
+    ".github/*",
+    "tests/*",
+    "benches/*",
+    "contrib/*",
+    "config/*.yaml",
+]
+
+[[bin]]
+name = "netevd"
+path = "src/main.rs"
+
+[lib]
+name = "netevd"
+path = "src/lib.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+tokio-stream = "0.1"
+futures = "0.3"
+
+# Netlink operations
+rtnetlink = "0.24"
+netlink-packet-route = "0.33"
+netlink-packet-core = "0.9"
+netlink-sys = "0.9"
+netlink-proto = "0.13"
+
+# DBus
+zbus = { version = "6.2", features = ["tokio"] }
+
+# Configuration
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# CLI
+clap = { version = "4.6", features = ["derive", "cargo", "env"] }
+
+# HTTP/API Server
+axum = { version = "0.8", features = ["ws", "macros"] }
+tower = { version = "0.5", features = ["util", "timeout", "limit"] }
+tower-http = { version = "0.7", features = ["fs", "trace", "cors"] }
+hyper = { version = "1.9", features = ["full"] }
+
+# Metrics
+prometheus = { version = "0.14", features = ["process"] }
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.23", features = ["v4", "serde"] }
+regex = "1.12"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# File watching
+notify = { version = "8.2", features = ["serde"] }
+
+# System/Security
+caps = "0.5"
+nix = { version = "0.31", features = ["user", "process", "signal"] }
+libc = "0.2"
+
+# Parsing
+ini = "2.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Network types
+ipnetwork = "0.21"
+
+# Optional features
+signal-hook = "0.4"
+signal-hook-tokio = { version = "0.4", features = ["futures-v0_3"] }
+aya = { version = "0.16", optional = true }
+
+[dev-dependencies]
+tempfile = "3.25"
+criterion = "0.8"
+
+[[bench]]
+name = "hooks"
+harness = false
+
+[profile.release]
+opt-level = 3
+lto = false
+codegen-units = 16
+strip = true
+
+# Fast profile for CI release bundles (avoids LTO OOM/timeouts on GitHub runners)
+[profile.ci]
+inherits = "release"
+opt-level = 2
+lto = false
+codegen-units = 16
+strip = true
+
+[features]
+default = []
+# Load observe-only tracepoint programs with Aya. Off by default so CI and
+# distro packages do not need bpf-linker / clang.
+ebpf = ["dep:aya"]

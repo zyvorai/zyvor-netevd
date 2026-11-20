@@ -1,0 +1,26 @@
+// Copyright 2026 Zyvor AI Labs · https://zyvor.dev
+// SPDX-License-Identifier: LicenseRef-Zyvor-Production-1.0
+
+//! File and path utilities
+
+use std::path::PathBuf;
+
+pub const CONFIG_DIR: &str = "/etc/netevd";
+pub const CONFIG_FILE: &str = "/etc/netevd/netevd.yaml";
+pub const DHCLIENT_LEASE_PATH: &str = "/var/lib/dhclient/dhclient.leases";
+pub const SYSTEMD_NETIF_LINKS: &str = "/run/systemd/netif/links";
+pub const SYSTEMD_NETIF_STATE: &str = "/run/systemd/netif/state";
+
+pub fn get_script_dir(state: &str) -> String {
+    if !crate::system::validation::validate_state_name(state) {
+        tracing::warn!(
+            "Rejected invalid state name for script directory: {}",
+            state
+        );
+        return String::new();
+    }
+    PathBuf::from(CONFIG_DIR)
+        .join(format!("{}.d", state))
+        .to_string_lossy()
+        .to_string()
+}

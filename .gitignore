@@ -1,0 +1,33 @@
+# Rust build artifacts
+/target/
+contrib/*/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo lock file (uncomment if this is a library)
+# Cargo.lock
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build output
+bin/
+
+# Debian package build
+/.pc/
+/_build/
+
+.docs-tools/
+
+# MkDocs
+.venv-docs/
+/site/
+__pycache__/

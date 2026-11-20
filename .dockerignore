@@ -1,0 +1,32 @@
+# Git
+.git
+.github
+.gitignore
+
+# Build artifacts
+target/
+**/*.rs.bk
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Tests
+tests/
+
+# benches/ is NOT excluded: Cargo.toml's [[bench]] entry means `cargo build`
+# fails to even parse the manifest if it's missing from the build context.
+
+# CI
+.github/workflows/
+
+# Misc
+.env
+.DS_Store
