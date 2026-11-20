@@ -15,8 +15,8 @@ Rates (one meter, no stacking): the Zyvor Support meter is per worker node per y
 
 | Tier | Rest of world (USD, excl. tax) | India (INR, incl. 18% GST) | Minimum |
 |------|-------------------------------|----------------------------|---------|
-| Supported (business hours) | USD 600 per node per year | INR 59,999 per node per year | USD 3,000 (INR 2,97,360), or INR 2,99,995 in India (5 nodes) |
-| Supported Plus (24x7 Sev-1/2) | USD 1,200 per node per year | INR 1,19,999 per node per year | USD 6,000 (INR 5,94,720), or INR 5,99,995 in India (5 nodes) |
+| Supported (business hours) | USD 600 per node per year | INR 59,999 per node per year | USD 3,000 abroad; INR 2,99,995 in India (5 nodes) |
+| Supported Plus (24x7 Sev-1/2) | USD 1,200 per node per year | INR 1,19,999 per node per year | USD 6,000 abroad; INR 5,99,995 in India (5 nodes) |
 
 Minimums are annual contract values and apply after discounts. Volume: 256-499 nodes -10%, 500-999 -15%, 1,000+ -20%; multi-year: 2 years -5%, 3 years -10%; volume and multi-year together are capped at 25%.
 
