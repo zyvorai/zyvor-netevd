@@ -112,7 +112,7 @@ When the interface becomes fully routable, that script runs. Same idea for carri
 ### From source
 
 ```bash
-git clone https://github.com/zyvorai/zyvor-netevd.git && cd netevd
+git clone https://github.com/zyvorai/zyvor-netevd.git && cd zyvor-netevd
 cargo build --release
 # optional: make -C ebpf && cargo build --release --features ebpf
 sudo install -Dm755 target/release/netevd /usr/bin/netevd
