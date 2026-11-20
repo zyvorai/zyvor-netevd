@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright 2026 Zyvor AI Labs · https://zyvor.dev
+# SPDX-License-Identifier: LicenseRef-Zyvor-Production-1.0
+
 # Render netevd social cards with Google Chrome + macOS `sips` (nothing to install).
 #   ./docs/social/build-social-card.sh
 # Outputs:
