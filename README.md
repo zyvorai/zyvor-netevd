@@ -2,7 +2,7 @@
 
 # netevd
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![License: Zyvor Production License v1.0](https://img.shields.io/badge/License-Zyvor_Production_1.0-blue.svg)](LICENSE)
 [![CI](https://github.com/zyvorai/zyvor-netevd/actions/workflows/ci.yml/badge.svg)](https://github.com/zyvorai/zyvor-netevd/actions/workflows/ci.yml)
 [![Functional Tests](https://github.com/zyvorai/zyvor-netevd/actions/workflows/functional-tests.yml/badge.svg)](https://github.com/zyvorai/zyvor-netevd/actions/workflows/functional-tests.yml)
 [![codecov](https://codecov.io/gh/zyvorai/netevd/branch/main/graph/badge.svg)](https://codecov.io/gh/zyvorai/netevd)
@@ -85,7 +85,7 @@ Version 0.4.1 ([CHANGELOG.md](CHANGELOG.md)):
 | Latency | &lt;100 ms netlink · zero polling |
 | eBPF | Opt-in observe-only: drops / TCP retransmit / TCP reset |
 | Ops | Policy routing · REST `:9090` · Prometheus `/metrics` |
-| License | Apache-2.0 |
+| License | Zyvor Production License 1.0 (free non-production) |
 
 ```mermaid
 flowchart LR
@@ -316,11 +316,11 @@ Enterprise rollouts cover netevd together with netctl and cloud-netconfig.
 
 ## Donate
 
-Free under Apache-2.0. If it helps you, you can donate any amount you like: <https://zyvor.dev/donate>. A donation is voluntary and supports development and maintenance. It is not a purchase: it buys no support, SLA, features, priority or license, and it is not tax-deductible (Zyvor AI Labs Private Limited is a company, not a charity). Support contracts are separate: [sales@zyvor.dev](mailto:sales@zyvor.dev).
+Non-production use is free under the Zyvor Production License v1.0; production use requires a commercial license (sales@zyvor.dev). If it helps you, you can donate any amount you like: <https://zyvor.dev/donate>. A donation is voluntary and supports development and maintenance. It is not a purchase: it buys no support, SLA, features, priority or license, and it is not tax-deductible (Zyvor AI Labs Private Limited is a company, not a charity). Support contracts are separate: [sales@zyvor.dev](mailto:sales@zyvor.dev).
 
 ## License
 
-netevd is **free and open source** under the [Apache License 2.0](LICENSE) (see [NOTICE](NOTICE)): use, modify and run it in production. That does not change.
+netevd is source-available under the **[Zyvor Production License v1.0](LICENSE)** (SPDX `LicenseRef-Zyvor-Production-1.0`, also in [LICENSES/](LICENSES/LicenseRef-Zyvor-Production-1.0.txt); see [NOTICE](NOTICE)). Non-production use (evaluation, development, testing, research, education) is free. Production use requires a commercial license from Zyvor AI Labs Private Limited ([sales@zyvor.dev](mailto:sales@zyvor.dev), [zyvor.dev/buy](https://zyvor.dev/buy)); a 30-day trial key is available for production evaluation.
 
 **Zyvor Enterprise** adds what production teams ask for: supported releases, deployment and upgrade guidance, priority incident triage, a named technical contact and 24x7 critical intake. Plans and terms: [docs/SUBSCRIPTION-MODEL.md](docs/SUBSCRIPTION-MODEL.md) · [Pricing](https://zyvor.dev/pricing?utm_source=github&utm_medium=netevd&utm_campaign=readme_license) · [sales@zyvor.dev](mailto:sales@zyvor.dev).
 

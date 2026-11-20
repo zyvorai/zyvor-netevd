@@ -1,6 +1,6 @@
 # netevd: support subscriptions
 
-netevd is open-source software. It is free to use under its open-source licence, and that does not change.
+netevd is source-available software. Non-production use is free under the Zyvor Production License v1.0; production use requires a commercial license (sales@zyvor.dev).
 
 Teams that want supported releases and defined response targets can buy an annual **support subscription** from Zyvor.
 
@@ -11,7 +11,7 @@ Teams that want supported releases and defined response targets can buy an annua
 | Supported | Standard plus priority queue and incident triage | Business hours, faster response |
 | Enterprise | Supported plus a named technical contact and 24x7 critical intake | One-hour initial response target for critical issues |
 
-Rates (one meter, no stacking): the Zyvor Support meter is per worker node per year and covers all Apache-2.0 infrastructure on a covered node; the software itself stays free.
+Rates (one meter, no stacking): the Zyvor Support meter is per worker node per year and covers all Zyvor infrastructure software on a covered node; non-production use of the software stays free; production use requires a commercial license.
 
 | Tier | Rest of world (USD, excl. tax) | India (INR, incl. 18% GST) | Minimum |
 |------|-------------------------------|----------------------------|---------|
@@ -27,6 +27,6 @@ Prices: INR incl. 18% GST in India; US dollars excl. tax elsewhere (VAT, GST or 
 - Annual prepaid subscription is the default, with a 12-month minimum. Multi-year prepay is available.
 - Minimums apply after any discounts.
 - Implementation, migration, training and managed operations are separate services.
-- At expiry, updates, downloads and support end. Open-source rights, where they apply, continue under the licence.
+- At expiry, updates, downloads and support end. Rights under the Zyvor Production License v1.0 continue as stated in that license.
 - Response targets need a contracted scope and are not uptime guarantees.
 - Existing signed agreements keep their agreed terms.

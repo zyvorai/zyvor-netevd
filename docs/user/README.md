@@ -56,4 +56,4 @@ Never publish lab IPs in runbooks — use `<host>` for remote targets.
 
 ---
 
-*Zyvor · [zyvor.dev](https://zyvor.dev) · netevd · Apache-2.0*
+*Zyvor · [zyvor.dev](https://zyvor.dev) · netevd · Zyvor Production License*

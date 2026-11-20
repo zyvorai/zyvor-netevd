@@ -10,8 +10,10 @@ FAQ covers what that section doesn't.
 
 ## Licensing & cost
 
-**Is the Community Edition really free?** Yes. Apache-2.0 — use, modify,
-and run it for personal, lab, and commercial production use at no charge.
+**Is the Community Edition really free?** For non-production use, yes: evaluation,
+development, testing, research and education are free under the Zyvor Production
+License v1.0. Production use requires a commercial license (sales@zyvor.dev,
+https://zyvor.dev/buy).
 See the README's [License](https://github.com/zyvorai/netevd#license) section.
 
 **What's the difference between Community and Enterprise?** See the
@@ -35,7 +37,7 @@ what the Enterprise tier adds. Community support is via GitHub Issues.
 ## Production readiness
 
 **Is this production-ready?** The README's own License section already
-states it's licensed for "commercial production use," and `SECURITY.md`
+states that production use requires a commercial license, and `SECURITY.md`
 documents a real defense-in-depth model (privilege drop, `CAP_NET_ADMIN`
 only, input validation, systemd hardening) plus an explicit "what netevd
 does NOT protect against" section — read that before deploying, since it's
