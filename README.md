@@ -2,7 +2,7 @@
 
 # netevd
 
-[![License: Zyvor Production Licence v2.0](https://img.shields.io/badge/License-Zyvor_Production_1.0-blue.svg)](LICENSE)
+[![License: Zyvor Production Licence v2.0](https://img.shields.io/badge/License-Zyvor_Production_Licence_v2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/zyvorai/zyvor-netevd/actions/workflows/ci.yml/badge.svg)](https://github.com/zyvorai/zyvor-netevd/actions/workflows/ci.yml)
 [![Functional Tests](https://github.com/zyvorai/zyvor-netevd/actions/workflows/functional-tests.yml/badge.svg)](https://github.com/zyvorai/zyvor-netevd/actions/workflows/functional-tests.yml)
 [![codecov](https://codecov.io/gh/zyvorai/netevd/branch/main/graph/badge.svg)](https://codecov.io/gh/zyvorai/netevd)
