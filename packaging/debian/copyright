@@ -5,11 +5,11 @@ Source: https://github.com/zyvorai/netevd
 
 Files: *
 Copyright: 2026 Zyvor AI Labs Private Limited <legal@zyvor.dev>
-License: LicenseRef-Zyvor-Production-1.0
+License: LicenseRef-Zyvor-Production-2.0
 
-License: LicenseRef-Zyvor-Production-1.0
- Zyvor Production License v1.0. Non-production use (evaluation, development,
- testing, research, education) is free. Production use requires a commercial
- license from Zyvor AI Labs Private Limited (sales@zyvor.dev). The complete
+License: LicenseRef-Zyvor-Production-2.0
+ Zyvor Production Licence v2.0. A 30-day trial is available on request from
+ sales@zyvor.dev (a paid evaluation Order at no charge); production and any
+ other use needs a paid Order under the licence. The complete
  license text is in the LICENSE file and in
- LICENSES/LicenseRef-Zyvor-Production-1.0.txt of the source package.
+ LICENSES/LicenseRef-Zyvor-Production-2.0.txt of the source package.
