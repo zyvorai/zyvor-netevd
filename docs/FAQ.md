@@ -11,7 +11,7 @@ FAQ covers what that section doesn't.
 ## Licensing & cost
 
 **Do I need a license?** Yes. Running netevd requires a commercial license under the
-Zyvor Production License v1.0 (sales@zyvor.dev, https://zyvor.dev/buy; a 30-day
+Zyvor Production Licence v2.0 (sales@zyvor.dev, https://zyvor.dev/buy; a 30-day
 trial key is how to evaluate).
 See the README's [License](https://github.com/zyvorai/netevd#license) section.
 

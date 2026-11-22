@@ -2,7 +2,7 @@
 
 # netevd
 
-[![License: Zyvor Production License v1.0](https://img.shields.io/badge/License-Zyvor_Production_1.0-blue.svg)](LICENSE)
+[![License: Zyvor Production Licence v2.0](https://img.shields.io/badge/License-Zyvor_Production_Licence_v2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/zyvorai/zyvor-netevd/actions/workflows/ci.yml/badge.svg)](https://github.com/zyvorai/zyvor-netevd/actions/workflows/ci.yml)
 [![Functional Tests](https://github.com/zyvorai/zyvor-netevd/actions/workflows/functional-tests.yml/badge.svg)](https://github.com/zyvorai/zyvor-netevd/actions/workflows/functional-tests.yml)
 [![codecov](https://codecov.io/gh/zyvorai/netevd/branch/main/graph/badge.svg)](https://codecov.io/gh/zyvorai/netevd)
@@ -68,7 +68,7 @@ Version 0.4.1 ([CHANGELOG.md](CHANGELOG.md)):
 | Latency | &lt;100 ms netlink · zero polling |
 | eBPF | Opt-in observe-only: drops / TCP retransmit / TCP reset |
 | Ops | Policy routing · REST `:9090` · Prometheus `/metrics` |
-| License | Zyvor Production License 1.0 (commercial license required; 30-day trial key) |
+| License | Zyvor Production Licence v2.0 (commercial license required; 30-day trial key) |
 
 ```mermaid
 flowchart LR
@@ -301,7 +301,7 @@ A commercial license is required to run it (sales@zyvor.dev); a 30-day trial key
 
 ## License
 
-netevd is source-available under the **[Zyvor Production License v1.0](LICENSE)** (SPDX `LicenseRef-Zyvor-Production-1.0`, also in [LICENSES/](LICENSES/LicenseRef-Zyvor-Production-1.0.txt); see [NOTICE](NOTICE)). Evaluation (evaluation, development, testing, research, education) is free for 30 days per organization. Production use requires a commercial license from Zyvor AI Labs Private Limited ([sales@zyvor.dev](mailto:sales@zyvor.dev), [zyvor.dev/buy](https://zyvor.dev/buy)); a 30-day trial key is available for production evaluation.
+netevd is source-available under the **[Zyvor Production Licence v2.0](LICENSE)** (SPDX `LicenseRef-Zyvor-Production-2.0`, also in [LICENSES/](LICENSES/LicenseRef-Zyvor-Production-2.0.txt); see [NOTICE](NOTICE)). A 30-day trial is available on request from [sales@zyvor.dev](mailto:sales@zyvor.dev) (a paid evaluation Order at no charge); production and any other use needs a paid Order under the Zyvor Production Licence v2.0 ([zyvor.dev/buy](https://zyvor.dev/buy)).
 
 **Price:** INR 999 per host per year incl. 18% GST in India; US$10 per host per year excl. tax elsewhere. Buy: [zyvor.dev/buy](https://zyvor.dev/buy). Orders of USD 5,000 or more and quotes are invoiced in USD through Skydo.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright 2026 Zyvor AI Labs · https://zyvor.dev
-# SPDX-License-Identifier: LicenseRef-Zyvor-Production-1.0
+# SPDX-License-Identifier: LicenseRef-Zyvor-Production-2.0
 
 # Render docs/social/netevd-hero-dark.html to netevd-hero-dark.jpg (2400x1260): README hero and GitHub social preview.
 # Needs Google Chrome and macOS `sips`; nothing is installed.

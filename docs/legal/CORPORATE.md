@@ -4,7 +4,7 @@ hero:
   title: ZyvorAI Labs — netevd corporate reference
 ---
 
-**Source code:** [LICENSE](https://github.com/zyvorai/netevd/blob/main/LICENSE) (Zyvor Production License)
+**Source code:** [LICENSE](https://github.com/zyvorai/netevd/blob/main/LICENSE) (Zyvor Production Licence)
 
 | Field | Value |
 |-------|--------|

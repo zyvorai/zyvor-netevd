@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright 2026 Zyvor AI Labs · https://zyvor.dev
-# SPDX-License-Identifier: LicenseRef-Zyvor-Production-1.0
+# SPDX-License-Identifier: LicenseRef-Zyvor-Production-2.0
 
 # Render docs/social/netevd-preview.html to docs/assets/social-preview.png (1568x784, Apple dark).
 # Needs Google Chrome and macOS `sips`.
