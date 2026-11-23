@@ -218,7 +218,7 @@ routing:
 4. Scripts exec’d directly (not `sh -c`)  
 5. systemd hardening (`NoNewPrivileges`, `ProtectSystem=strict`, …); eBPF re-allows `bpf` / `perf_event_open`  
 
-Details: [SECURITY.md](SECURITY.md).
+Details: [SECURITY.md](SECURITY.md). Operator tooling: `netevd check-config` (line-numbered config diagnostics) and `netevd explain <event>` (what would run, nothing executed): [docs/hardening.md](docs/hardening.md).
 
 ## Performance
 

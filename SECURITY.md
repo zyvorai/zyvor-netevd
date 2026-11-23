@@ -59,6 +59,10 @@ All external data is validated before use:
 
 Scripts are executed directly (`Command::new()`), never through a shell. They run as the `netevd` user with no capabilities and receive only validated environment variables.
 
+Each script also runs in its own process group (killed whole on timeout), with a fixed working directory and umask, no core dumps, optional rlimits, a capped environment and capped captured output. Hidden files and editor/package leftovers in hook directories are never run. `hooks.sandbox.strict_script_perms` additionally refuses scripts that are group/other-writable, setuid, or not owned by root or the daemon user. See [docs/hardening.md](docs/hardening.md). `hooks.rate_limit` bounds how often a flapping link can trigger scripts.
+
+`netevd check-config` reports risky or misspelt configuration; `netevd explain` shows what would run for an event without running it.
+
 ### Layer 5: systemd Hardening
 
 ```ini

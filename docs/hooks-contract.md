@@ -100,6 +100,8 @@ hooks:
   debounce_ms: 50   # coalesce bursts per (link, event) key
   timeout_sec: 30   # per-script timeout
   max_parallel: 1   # reserved; scripts currently always run sequentially
+  max_pending: 4096 # cap on distinct pending (link, event) keys
+  # sandbox: and rate_limit: are described in hardening.md
 ```
 
 `InterfaceSelector` (`src/hooks/match_iface.rs`) applies `exclude` first,
@@ -113,6 +115,7 @@ When `exclude` is empty it falls back to `DEFAULT_EXCLUDES`
   `dispatch_event` call.
 - `netevd_hooks_coalesced_total` — events merged into a pending window
   instead of causing a separate dispatch.
+- `netevd_hooks_rate_limited_total` — dispatches dropped by `hooks.rate_limit`.
 
 ## Offline contract sandbox
 

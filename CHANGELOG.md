@@ -20,6 +20,32 @@
   `rust:1-*` builder tags float and are unchanged.
 - `requirements-docs.txt` floors: mkdocs >= 1.6.1, mkdocs-material >= 9.8 (PyPI: 1.6.1 / 9.8.2). No Node pins exist in this repo.
 
+### Added
+
+- `netevd check-config` (alias `validate`): line-numbered diagnostics. Reports YAML errors with line, unknown keys (serde silently
+  ignored them) with a suggestion, and invalid or risky values (backend, interface names and patterns, ports, TLS, timeouts,
+  sandbox and rate-limit settings, filter script names containing `/` or `..`, world-writable config). `--strict` fails on warnings,
+  `--format json` for tooling. `netevd -c FILE check-config` now honours the global `--config` (it was ignored).
+- `netevd explain <event>`: shows the hook directory, interface-selector decision, filter decision, scripts in order with
+  `run` or `skip: reason`, the environment the script would receive and the variables rejected by validation, without executing
+  anything. `--from-file events.jsonl` replays recorded `netevd.event.v1` events (malformed lines reported, not fatal).
+  `netevd test` now prints the validated environment instead of raw values.
+- `hooks.sandbox`: script working directory, umask, environment passthrough list and budget, captured-output cap, optional rlimits
+  (nofile, cpu, as, fsize), no core dumps, and `strict_script_perms`. See `docs/hardening.md`.
+- `hooks.rate_limit` (token bucket per link and event, off by default) and `hooks.max_pending` (bound on the debouncer key table);
+  metric `netevd_hooks_rate_limited_total`.
+- `docs/RESEARCH.md` (field survey, ranked ideas, sources) and `docs/hardening.md`.
+
+### Fixed
+
+- A script timeout killed only the direct child; background children survived. The whole process group is now killed.
+- Script stdout/stderr was buffered without limit; it is now capped per stream.
+- Hidden files and editor/package leftovers (`~`, `.bak`, `.dpkg-old`, ...) in hook directories were executed; they are skipped.
+- `ADDRESSES`/`DNS`-style lists accepted newlines and tabs as separators; only spaces separate addresses now.
+- `.` and `..` passed interface-name validation.
+- The debouncer pending-key table was unbounded.
+- Scripts inherited the daemon working directory and umask.
+
 ### Other
 
 - Container: `:latest` now points at the Alpine image, and the Trivy container scan covers it. The Ubuntu 26.04 image's

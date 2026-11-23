@@ -23,7 +23,24 @@ monitoring:
 hooks:
   debounce_ms: 50      # coalesce netlink bursts per (link, event)
   timeout_sec: 30      # per-script timeout
-  max_parallel: 1      # 1 = alphabetical sequential (safe default)
+  max_parallel: 1      # reserved: scripts always run sequentially
+  max_pending: 4096    # cap on distinct (link, event) keys waiting in the debouncer
+  sandbox:             # see docs/hardening.md
+    workdir: "/"
+    pass_env: ["HOME", "USER", "LANG", "TZ"]
+    max_env_bytes: 262144
+    max_output_bytes: 65536
+    umask: 18          # decimal; 18 = 0o022
+    strict_script_perms: false  # true: refuse group/other-writable, setuid or foreign-owned scripts
+    rlimit_nofile: 0   # 0 = leave unchanged (same for the other rlimit_* keys)
+    rlimit_cpu_sec: 0
+    rlimit_as_mb: 0
+    rlimit_fsize_mb: 0
+    no_core_dumps: true
+  rate_limit:          # per (link, event); burst 0 = off
+    burst: 0
+    per_minute: 30
+    max_keys: 2048
 
 routing:
   policy_rules:  # Interfaces for custom routing tables
