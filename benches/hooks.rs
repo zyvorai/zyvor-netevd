@@ -5,7 +5,8 @@
 //! validation (run per env var, per script) and the hook event payload
 //! (built per netlink event, serialized per script directory dispatch).
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
+use criterion::{criterion_group, criterion_main, Criterion};
 
 use netevd::hooks::event::HookEventV1;
 use netevd::hooks::match_iface::InterfaceSelector;

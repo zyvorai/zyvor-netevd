@@ -113,8 +113,10 @@ mod tests {
 
     #[test]
     fn resolve_empty_when_missing() {
-        let mut cfg = EbpfConfig::default();
-        cfg.object_path = "/no/such/netevd-ebpf.o".into();
+        let cfg = EbpfConfig {
+            object_path: "/no/such/netevd-ebpf.o".into(),
+            ..Default::default()
+        };
         assert!(resolve_object(&cfg).is_none());
     }
 }

@@ -2,14 +2,13 @@
 name = "netevd"
 version = "0.4.1"
 edition = "2021"
-# Floor set by zbus/zvariant 5.15's own declared rust-version — keep this in
+# Floor set by notify-types 2.3 (1.91); zbus 6.5 needs 1.89. Keep in
 # sync with the `msrv` job in .github/workflows/cross-platform.yml.
-rust-version = "1.87"
+rust-version = "1.91"
 authors = ["ZyvorAI Labs Private Limited <info@zyvor.dev>"]
 license = "LicenseRef-Zyvor-Production-2.0"
 description = "High-performance network event daemon for systemd-networkd, NetworkManager, and dhclient with routing policy rules and script execution"
 repository = "https://github.com/zyvorai/netevd"
-homepage = "https://github.com/zyvorai/netevd"
 documentation = "https://github.com/zyvorai/netevd/blob/main/README.md"
 readme = "README.md"
 keywords = ["networking", "systemd", "dhclient", "netlink", "dbus"]
@@ -34,15 +33,14 @@ path = "src/lib.rs"
 [dependencies]
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
-tokio-stream = "0.1"
 futures = "0.3"
 
 # Netlink operations
 rtnetlink = "0.24"
-netlink-packet-route = "0.33"
+netlink-packet-route = "0.34"
 netlink-packet-core = "0.9"
 netlink-sys = "0.9"
-netlink-proto = "0.13"
+netlink-proto = "0.14"
 
 # DBus
 zbus = { version = "6.2", features = ["tokio"] }
@@ -78,22 +76,15 @@ notify = { version = "8.2", features = ["serde"] }
 
 # System/Security
 caps = "0.5"
-nix = { version = "0.31", features = ["user", "process", "signal"] }
+nix = { version = "0.32", features = ["user", "process", "signal"] }
 libc = "0.2"
 
-# Parsing
-ini = "2.0"
 
 # Error handling
 anyhow = "1.0"
 thiserror = "2.0"
 
-# Network types
-ipnetwork = "0.21"
 
-# Optional features
-signal-hook = "0.4"
-signal-hook-tokio = { version = "0.4", features = ["futures-v0_3"] }
 aya = { version = "0.16", optional = true }
 
 [dev-dependencies]

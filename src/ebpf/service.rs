@@ -5,15 +5,23 @@
 
 use std::collections::HashSet;
 use std::sync::Arc;
+#[cfg(feature = "ebpf")]
 use std::time::{Duration, Instant};
 
-use tracing::{info, warn};
+#[cfg(feature = "ebpf")]
+use tracing::info;
+use tracing::warn;
 
+#[cfg(feature = "ebpf")]
 use super::coalesce::Coalescer;
+#[cfg(feature = "ebpf")]
 use super::decode;
-use super::events::{self, ObsEvent, KIND_RST};
+use super::events::{self, ObsEvent};
+#[cfg(feature = "ebpf")]
+use super::events::KIND_RST;
 use super::loader;
 use crate::config::Config;
+#[cfg(feature = "ebpf")]
 use crate::hooks::match_iface::InterfaceSelector;
 use crate::hooks::{dispatch::dispatch_event, HookDispatchOpts};
 use crate::metrics;
@@ -77,7 +85,7 @@ async fn run(
     {
         let _ = (state, opts);
         loader::aya_attach::load_and_attach(&config.ebpf)?;
-        return Ok(());
+        Ok(())
     }
 
     #[cfg(feature = "ebpf")]
