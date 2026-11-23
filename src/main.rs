@@ -147,10 +147,13 @@ async fn main() -> Result<()> {
         config_root: PathBuf::from(system::paths::CONFIG_DIR),
         timeout: Duration::from_secs(config.hooks.timeout_sec),
     };
+    system::sandbox::set_global(config.hooks.sandbox.clone());
     let (hook_tx, hook_service) = hooks::spawn_service(
         hook_opts.clone(),
         Duration::from_millis(config.hooks.debounce_ms),
         metrics.clone(),
+        config.hooks.rate_limit.clone(),
+        config.hooks.max_pending,
     );
     ebpf::spawn(config.clone(), state.clone(), hook_opts.clone());
 

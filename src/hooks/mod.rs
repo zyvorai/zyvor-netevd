@@ -7,6 +7,7 @@ pub mod debounce;
 pub mod dispatch;
 pub mod event;
 pub mod match_iface;
+pub mod ratelimit;
 pub mod service;
 
 pub use dispatch::HookDispatchOpts;

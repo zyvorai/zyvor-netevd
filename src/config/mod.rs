@@ -3,6 +3,7 @@
 
 //! Configuration parsing and management
 
+
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::env;
@@ -10,6 +11,8 @@ use std::fs;
 use std::path::Path;
 
 use crate::filters::Filter;
+use crate::hooks::ratelimit::RateLimitConfig;
+use crate::system::sandbox::SandboxConfig;
 
 const DEFAULT_CONFIG_PATH: &str = "/etc/netevd/netevd.yaml";
 const DEFAULT_LOG_LEVEL: &str = "info";
@@ -63,6 +66,22 @@ pub struct HooksConfig {
     /// Max scripts to run in parallel in one directory (1 = sequential).
     #[serde(default = "default_hook_max_parallel")]
     pub max_parallel: usize,
+
+    /// Script sandbox profile (environment, workdir, limits).
+    #[serde(default)]
+    pub sandbox: SandboxConfig,
+
+    /// Per-(link, event) dispatch rate limit. Off unless `burst` > 0.
+    #[serde(default)]
+    pub rate_limit: RateLimitConfig,
+
+    /// Cap on distinct (link, event) keys waiting in the debouncer.
+    #[serde(default = "default_max_pending")]
+    pub max_pending: usize,
+}
+
+fn default_max_pending() -> usize {
+    crate::hooks::debounce::DEFAULT_MAX_PENDING
 }
 
 
@@ -137,6 +156,9 @@ impl Default for HooksConfig {
             debounce_ms: default_debounce_ms(),
             timeout_sec: default_hook_timeout_sec(),
             max_parallel: default_hook_max_parallel(),
+            sandbox: SandboxConfig::default(),
+            rate_limit: RateLimitConfig::default(),
+            max_pending: default_max_pending(),
         }
     }
 }

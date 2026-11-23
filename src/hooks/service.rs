@@ -13,6 +13,7 @@ use tracing::{debug, warn};
 use super::debounce::HookDebouncer;
 use super::dispatch::{dispatch_event, HookDispatchOpts};
 use super::event::HookEventV1;
+use super::ratelimit::{RateLimitConfig, RateLimiter};
 use crate::metrics::MetricsHandle;
 
 /// Spawn the hook dispatch service. Returns a sender watchers can clone and
@@ -21,9 +22,11 @@ pub fn spawn(
     opts: HookDispatchOpts,
     debounce: Duration,
     metrics: Option<MetricsHandle>,
+    rate_limit: RateLimitConfig,
+    max_pending: usize,
 ) -> (UnboundedSender<HookEventV1>, JoinHandle<()>) {
     let (tx, rx) = mpsc::unbounded_channel();
-    let handle = tokio::spawn(run(rx, opts, debounce, metrics));
+    let handle = tokio::spawn(run(rx, opts, debounce, metrics, rate_limit, max_pending));
     (tx, handle)
 }
 
@@ -32,8 +35,11 @@ async fn run(
     opts: HookDispatchOpts,
     debounce: Duration,
     metrics: Option<MetricsHandle>,
+    rate_limit: RateLimitConfig,
+    max_pending: usize,
 ) {
-    let mut debouncer = HookDebouncer::new(debounce);
+    let mut debouncer = HookDebouncer::new(debounce).with_max_pending(max_pending);
+    let mut limiter = RateLimiter::new(rate_limit);
     let mut last_coalesced: u64 = 0;
     let flush_every = if debounce.is_zero() {
         Duration::from_millis(50)
@@ -48,14 +54,14 @@ async fn run(
                 match event {
                     Some(event) => {
                         if let Some(displaced) = debouncer.push(event) {
-                            dispatch(&displaced, &opts, &metrics).await;
+                            dispatch(&displaced, &opts, &metrics, &mut limiter).await;
                         }
                         report_coalesced(&debouncer, &metrics, &mut last_coalesced);
                     }
                     None => {
                         // All senders dropped (shutdown): flush what remains.
                         for event in debouncer.take_all() {
-                            dispatch(&event, &opts, &metrics).await;
+                            dispatch(&event, &opts, &metrics, &mut limiter).await;
                         }
                         break;
                     }
@@ -63,14 +69,27 @@ async fn run(
             }
             _ = ticker.tick() => {
                 for event in debouncer.take_ready() {
-                    dispatch(&event, &opts, &metrics).await;
+                    dispatch(&event, &opts, &metrics, &mut limiter).await;
                 }
             }
         }
     }
 }
 
-async fn dispatch(event: &HookEventV1, opts: &HookDispatchOpts, metrics: &Option<MetricsHandle>) {
+async fn dispatch(
+    event: &HookEventV1,
+    opts: &HookDispatchOpts,
+    metrics: &Option<MetricsHandle>,
+    limiter: &mut RateLimiter,
+) {
+    let key = format!("{}:{}", event.link, event.event);
+    if !limiter.allow(&key, std::time::Instant::now()) {
+        warn!(event = %event.event, link = %event.link, "hook dispatch rate-limited");
+        if let Some(ref m) = metrics {
+            m.hooks_rate_limited_total.inc();
+        }
+        return;
+    }
     if let Some(ref m) = metrics {
         m.hooks_dispatched_total
             .with_label_values(&[event.event.as_str(), event.link.as_str()])

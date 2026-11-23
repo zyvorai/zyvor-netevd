@@ -16,7 +16,7 @@ use std::net::IpAddr;
 /// - Alphanumeric plus underscore, hyphen, and period
 /// - Not containing shell metacharacters
 pub fn validate_interface_name(name: &str) -> bool {
-    if name.is_empty() || name.len() > 15 {
+    if name.is_empty() || name.len() > 15 || name == "." || name == ".." {
         return false;
     }
 
@@ -104,7 +104,11 @@ pub fn validate_ip_list(list: &str) -> bool {
         return true; // Empty list is valid
     }
 
-    list.split_whitespace().all(validate_ip_address)
+    // Only plain spaces separate addresses: newlines/tabs would let a value
+    // smuggle a second line into line-oriented consumers.
+    list.split(' ')
+        .filter(|a| !a.is_empty())
+        .all(validate_ip_address)
 }
 
 /// Sanitize a string for safe use in environment variables
@@ -164,6 +168,16 @@ pub fn validate_state_name(state: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_dot_names_and_newline_lists_rejected() {
+        assert!(!validate_interface_name("."));
+        assert!(!validate_interface_name(".."));
+        assert!(validate_interface_name("a.b"));
+        assert!(!validate_ip_list("10.0.0.1\n10.0.0.2"));
+        assert!(!validate_ip_list("10.0.0.1\t10.0.0.2"));
+        assert!(validate_ip_list("10.0.0.1 10.0.0.2"));
+    }
 
     #[test]
     fn test_validate_interface_name() {

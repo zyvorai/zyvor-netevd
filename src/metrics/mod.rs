@@ -36,6 +36,7 @@ pub struct Metrics {
     // Hook contract metrics
     pub hooks_dispatched_total: CounterVec,
     pub hooks_coalesced_total: Counter,
+    pub hooks_rate_limited_total: Counter,
 
     // Observe-only eBPF metrics
     pub ebpf_samples_total: CounterVec,
@@ -177,6 +178,12 @@ impl Metrics {
         ))?;
         registry.register(Box::new(hooks_coalesced_total.clone()))?;
 
+        let hooks_rate_limited_total = Counter::with_opts(Opts::new(
+            "netevd_hooks_rate_limited_total",
+            "Total number of hook dispatches dropped by the per-key rate limiter",
+        ))?;
+        registry.register(Box::new(hooks_rate_limited_total.clone()))?;
+
         let ebpf_samples_total = CounterVec::new(
             Opts::new(
                 "netevd_ebpf_samples_total",
@@ -225,6 +232,7 @@ impl Metrics {
             netlink_errors_total,
             hooks_dispatched_total,
             hooks_coalesced_total,
+            hooks_rate_limited_total,
             ebpf_samples_total,
             ebpf_hooks_total,
             ebpf_ring_lost_total,
