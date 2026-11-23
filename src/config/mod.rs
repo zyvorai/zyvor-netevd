@@ -85,7 +85,6 @@ fn default_max_pending() -> usize {
     crate::hooks::debounce::DEFAULT_MAX_PENDING
 }
 
-
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct EbpfConfig {
@@ -354,7 +353,6 @@ fn default_log_level() -> String {
 fn default_backend() -> String {
     DEFAULT_BACKEND.to_string()
 }
-
 
 fn default_bind_address() -> String {
     "127.0.0.1".to_string()

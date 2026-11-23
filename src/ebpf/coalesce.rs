@@ -84,7 +84,7 @@ impl Coalescer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ebpf::events::{KIND_DROP, ObsEvent};
+    use crate::ebpf::events::{ObsEvent, KIND_DROP};
 
     fn sample(ifindex: u32, reason: u32) -> ObsEvent {
         ObsEvent {

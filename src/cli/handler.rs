@@ -241,7 +241,13 @@ fn handle_explain(config_path: &Path, a: ExplainArgs, format: OutputFormat) -> R
         events
     } else {
         let name = a.event.unwrap_or_default();
-        vec![synthetic_event(&name, &a.link, a.index, &a.backend, a.addresses)]
+        vec![synthetic_event(
+            &name,
+            &a.link,
+            a.index,
+            &a.backend,
+            a.addresses,
+        )]
     };
 
     let explained: Vec<_> = events

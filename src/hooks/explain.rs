@@ -90,11 +90,7 @@ fn filter_decision(config: &Config, ev: &HookEventV1) -> String {
     if ev.backend == "netlink" {
         return "not applied (filters only apply to backend events, not netlink hooks)".into();
     }
-    let addresses: Vec<IpAddr> = ev
-        .addresses
-        .iter()
-        .filter_map(|a| a.parse().ok())
-        .collect();
+    let addresses: Vec<IpAddr> = ev.addresses.iter().filter_map(|a| a.parse().ok()).collect();
     let ne = NetworkEvent {
         interface: ev.link.clone(),
         event_type: ev.event.clone(),
@@ -229,7 +225,11 @@ impl Explanation {
     pub fn render_text(&self) -> String {
         use std::fmt::Write;
         let mut o = String::new();
-        let _ = writeln!(o, "Event     : {} on {} ({})", self.event, self.link, self.backend);
+        let _ = writeln!(
+            o,
+            "Event     : {} on {} ({})",
+            self.event, self.link, self.backend
+        );
         let _ = writeln!(
             o,
             "Hook dir  : {}",
@@ -238,7 +238,11 @@ impl Explanation {
         let _ = writeln!(
             o,
             "Interface : {} ({})",
-            if self.interface_selected { "selected" } else { "dropped" },
+            if self.interface_selected {
+                "selected"
+            } else {
+                "dropped"
+            },
             self.interface_reason
         );
         let _ = writeln!(o, "Filters   : {}", self.filter_decision);
@@ -292,12 +296,17 @@ pub fn load_events(text: &str) -> (Vec<HookEventV1>, Vec<String>) {
             break;
         }
         if line.len() > MAX_EVENT_LINE {
-            errors.push(format!("line {n}: longer than {MAX_EVENT_LINE} bytes, skipped"));
+            errors.push(format!(
+                "line {n}: longer than {MAX_EVENT_LINE} bytes, skipped"
+            ));
             continue;
         }
         match serde_json::from_str::<HookEventV1>(line) {
             Ok(e) if e.schema == super::event::SCHEMA_V1 => events.push(e),
-            Ok(e) => errors.push(format!("line {n}: unsupported schema '{}'", shorten(&e.schema))),
+            Ok(e) => errors.push(format!(
+                "line {n}: unsupported schema '{}'",
+                shorten(&e.schema)
+            )),
             Err(e) => errors.push(format!("line {n}: {e}")),
         }
     }
@@ -345,10 +354,18 @@ mod tests {
         let (t, cfg) = setup();
         let ev = synthetic_event("routable", "eth0", 2, "netlink", vec!["10.0.0.5".into()]);
         let x = explain_event(&ev, &cfg, t.path(), 0, &no_env);
-        let names: Vec<_> = x.scripts.iter().map(|s| (s.name.as_str(), s.outcome.as_str())).collect();
+        let names: Vec<_> = x
+            .scripts
+            .iter()
+            .map(|s| (s.name.as_str(), s.outcome.as_str()))
+            .collect();
         assert_eq!(
             names,
-            [("01-a.sh", "run"), ("02-b.sh", "run"), ("03-off", "skip: not executable")]
+            [
+                ("01-a.sh", "run"),
+                ("02-b.sh", "run"),
+                ("03-off", "skip: not executable")
+            ]
         );
         assert!(x.would_run);
         assert!(x.interface_selected);
@@ -441,7 +458,9 @@ mod tests {
 
     #[test]
     fn load_events_survives_garbage() {
-        let good = synthetic_event("routable", "eth0", 2, "netlink", vec![]).to_json().unwrap();
+        let good = synthetic_event("routable", "eth0", 2, "netlink", vec![])
+            .to_json()
+            .unwrap();
         let wrong = good.replace("netevd.event.v1", "netevd.event.v9");
         let huge = format!("{{\"x\":\"{}\"}}", "a".repeat(MAX_EVENT_LINE + 1));
         let text = format!(
@@ -455,7 +474,9 @@ mod tests {
 
     #[test]
     fn load_events_is_capped() {
-        let good = synthetic_event("mtu", "eth0", 2, "netlink", vec![]).to_json().unwrap();
+        let good = synthetic_event("mtu", "eth0", 2, "netlink", vec![])
+            .to_json()
+            .unwrap();
         let text = vec![good; MAX_EVENTS + 50].join("\n");
         let (events, errors) = load_events(&text);
         assert_eq!(events.len(), MAX_EVENTS);

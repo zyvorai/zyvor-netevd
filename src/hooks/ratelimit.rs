@@ -220,7 +220,10 @@ mod tests {
         let mut rl = RateLimiter::new(cfg(1, 1, 64));
         let t = Instant::now();
         for i in 0..100_000u32 {
-            rl.allow(&format!("veth{i}:link-added"), t + Duration::from_micros(u64::from(i)));
+            rl.allow(
+                &format!("veth{i}:link-added"),
+                t + Duration::from_micros(u64::from(i)),
+            );
         }
         assert!(rl.tracked_keys() <= 64);
     }

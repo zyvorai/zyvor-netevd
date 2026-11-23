@@ -61,8 +61,7 @@ pub mod aya_attach {
                 "tcp",
                 "tcp_receive_reset",
             )?;
-            attachments +=
-                attach_tp(&mut bpf, "observe_tcp_send_reset", "tcp", "tcp_send_reset")?;
+            attachments += attach_tp(&mut bpf, "observe_tcp_send_reset", "tcp", "tcp_send_reset")?;
         }
         Ok(Loaded { bpf, attachments })
     }

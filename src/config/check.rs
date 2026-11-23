@@ -45,7 +45,13 @@ pub struct Report {
 }
 
 impl Report {
-    fn push(&mut self, level: Level, line: Option<usize>, path: Option<&str>, msg: impl Into<String>) {
+    fn push(
+        &mut self,
+        level: Level,
+        line: Option<usize>,
+        path: Option<&str>,
+        msg: impl Into<String>,
+    ) {
         self.diagnostics.push(Diagnostic {
             level,
             line,
@@ -55,11 +61,17 @@ impl Report {
     }
 
     pub fn errors(&self) -> usize {
-        self.diagnostics.iter().filter(|d| d.level == Level::Error).count()
+        self.diagnostics
+            .iter()
+            .filter(|d| d.level == Level::Error)
+            .count()
     }
 
     pub fn warnings(&self) -> usize {
-        self.diagnostics.iter().filter(|d| d.level == Level::Warning).count()
+        self.diagnostics
+            .iter()
+            .filter(|d| d.level == Level::Warning)
+            .count()
     }
 
     /// `strict` turns warnings into failures.
@@ -190,7 +202,11 @@ pub fn scan_keys(text: &str) -> Vec<(String, usize)> {
         let mut ind = indent;
         let mut content = body;
         let mut is_item = false;
-        while let Some(rest) = content.strip_prefix("- ").or(if content == "-" { Some("") } else { None }) {
+        while let Some(rest) =
+            content
+                .strip_prefix("- ")
+                .or(if content == "-" { Some("") } else { None })
+        {
             if !is_item {
                 while stack.last().is_some_and(|(si, _)| *si >= ind) {
                     stack.pop();
@@ -215,7 +231,11 @@ pub fn scan_keys(text: &str) -> Vec<(String, usize)> {
             stack.pop();
         }
         let mut path = String::new();
-        for name in stack.iter().map(|(_, n)| n.as_str()).chain(std::iter::once(key.as_str())) {
+        for name in stack
+            .iter()
+            .map(|(_, n)| n.as_str())
+            .chain(std::iter::once(key.as_str()))
+        {
             if name == "[]" {
                 path.push_str("[]");
             } else {
@@ -328,16 +348,23 @@ fn pattern_problem(p: &str) -> Option<String> {
         return Some("empty pattern".into());
     }
     if p.len() > 64 {
-        return Some(format!("pattern '{}...' is longer than 64 characters", &p[..16]));
+        return Some(format!(
+            "pattern '{}...' is longer than 64 characters",
+            &p[..16]
+        ));
     }
     if p.contains('?') || p.contains('[') {
-        return Some(format!("pattern '{p}': only '*' is supported as a wildcard"));
+        return Some(format!(
+            "pattern '{p}': only '*' is supported as a wildcard"
+        ));
     }
     if !p
         .chars()
         .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.' | '*'))
     {
-        return Some(format!("pattern '{p}' contains characters that cannot occur in an interface name"));
+        return Some(format!(
+            "pattern '{p}' contains characters that cannot occur in an interface name"
+        ));
     }
     None
 }
@@ -346,11 +373,21 @@ fn pattern_problem(p: &str) -> Option<String> {
 pub fn check_yaml(text: &str) -> Report {
     let mut r = Report::default();
     if text.len() > MAX_CONFIG_BYTES {
-        r.push(Level::Error, None, None, format!("configuration larger than {MAX_CONFIG_BYTES} bytes"));
+        r.push(
+            Level::Error,
+            None,
+            None,
+            format!("configuration larger than {MAX_CONFIG_BYTES} bytes"),
+        );
         return r;
     }
     if text.contains('\0') {
-        r.push(Level::Error, None, None, "configuration contains a NUL byte");
+        r.push(
+            Level::Error,
+            None,
+            None,
+            "configuration contains a NUL byte",
+        );
         return r;
     }
 
@@ -372,7 +409,9 @@ pub fn check_yaml(text: &str) -> Report {
     // Unknown keys (and duplicates, which serde_yaml already rejects, so only
     // the former is needed).
     for (path, line) in &keys {
-        if OPAQUE.iter().any(|o| path == o || path.starts_with(&format!("{o}.")) || path.starts_with(&format!("{o}[]"))) {
+        if OPAQUE.iter().any(|o| {
+            path == o || path.starts_with(&format!("{o}.")) || path.starts_with(&format!("{o}[]"))
+        }) {
             continue;
         }
         if !KNOWN.contains(&path.as_str()) {
@@ -408,18 +447,28 @@ pub fn check_yaml(text: &str) -> Report {
             Level::Warning,
             at("system.log_level"),
             Some("system.log_level"),
-            format!("log_level '{}' is not one of trace, debug, info, warn, error", cfg.system.log_level),
+            format!(
+                "log_level '{}' is not one of trace, debug, info, warn, error",
+                cfg.system.log_level
+            ),
         );
     }
 
     // monitoring / routing
     for name in &cfg.monitoring.interfaces {
         if !validate_interface_name(name) {
-            r.push(Level::Error, at("monitoring.interfaces"), Some("monitoring.interfaces"),
-                format!("'{name}' is not a valid interface name"));
+            r.push(
+                Level::Error,
+                at("monitoring.interfaces"),
+                Some("monitoring.interfaces"),
+                format!("'{name}' is not a valid interface name"),
+            );
         }
     }
-    for (key, list) in [("monitoring.match_patterns", &cfg.monitoring.match_patterns), ("monitoring.exclude", &cfg.monitoring.exclude)] {
+    for (key, list) in [
+        ("monitoring.match_patterns", &cfg.monitoring.match_patterns),
+        ("monitoring.exclude", &cfg.monitoring.exclude),
+    ] {
         for p in list {
             if let Some(msg) = pattern_problem(p) {
                 r.push(Level::Error, at(key), Some(key), msg);
@@ -428,39 +477,84 @@ pub fn check_yaml(text: &str) -> Report {
     }
     for name in &cfg.routing.policy_rules {
         if !validate_interface_name(name) {
-            r.push(Level::Error, at("routing.policy_rules"), Some("routing.policy_rules"),
-                format!("'{name}' is not a valid interface name"));
-        } else if !cfg.monitoring.interfaces.is_empty() && !cfg.monitoring.interfaces.contains(name) {
-            r.push(Level::Warning, at("routing.policy_rules"), Some("routing.policy_rules"),
-                format!("policy rule interface '{name}' is not listed in monitoring.interfaces"));
+            r.push(
+                Level::Error,
+                at("routing.policy_rules"),
+                Some("routing.policy_rules"),
+                format!("'{name}' is not a valid interface name"),
+            );
+        } else if !cfg.monitoring.interfaces.is_empty() && !cfg.monitoring.interfaces.contains(name)
+        {
+            r.push(
+                Level::Warning,
+                at("routing.policy_rules"),
+                Some("routing.policy_rules"),
+                format!("policy rule interface '{name}' is not listed in monitoring.interfaces"),
+            );
         }
     }
 
     // api / metrics
     match cfg.api.bind_address.parse::<IpAddr>() {
-        Err(_) => r.push(Level::Error, at("api.bind_address"), Some("api.bind_address"),
-            format!("bind_address '{}' is not an IP address", cfg.api.bind_address)),
+        Err(_) => r.push(
+            Level::Error,
+            at("api.bind_address"),
+            Some("api.bind_address"),
+            format!(
+                "bind_address '{}' is not an IP address",
+                cfg.api.bind_address
+            ),
+        ),
         Ok(ip) if cfg.api.enabled && !ip.is_loopback() && !cfg.api.tls.enabled => r.push(
-            Level::Warning, at("api.bind_address"), Some("api.bind_address"),
+            Level::Warning,
+            at("api.bind_address"),
+            Some("api.bind_address"),
             format!("API listens on non-loopback {ip} without TLS"),
         ),
         Ok(_) => {}
     }
     if cfg.api.port == 0 {
-        r.push(Level::Error, at("api.port"), Some("api.port"), "port 0 is not a usable port");
+        r.push(
+            Level::Error,
+            at("api.port"),
+            Some("api.port"),
+            "port 0 is not a usable port",
+        );
     }
     if cfg.metrics.port == 0 {
-        r.push(Level::Error, at("metrics.port"), Some("metrics.port"), "port 0 is not a usable port");
+        r.push(
+            Level::Error,
+            at("metrics.port"),
+            Some("metrics.port"),
+            "port 0 is not a usable port",
+        );
     }
     if cfg.api.enabled && cfg.metrics.enabled && cfg.api.port == cfg.metrics.port {
-        r.push(Level::Warning, at("metrics.port"), Some("metrics.port"),
-            "metrics.port equals api.port; the second listener will fail to bind");
+        r.push(
+            Level::Warning,
+            at("metrics.port"),
+            Some("metrics.port"),
+            "metrics.port equals api.port; the second listener will fail to bind",
+        );
     }
     if cfg.api.tls.enabled {
-        for (key, v) in [("api.tls.cert_file", &cfg.api.tls.cert_file), ("api.tls.key_file", &cfg.api.tls.key_file)] {
+        for (key, v) in [
+            ("api.tls.cert_file", &cfg.api.tls.cert_file),
+            ("api.tls.key_file", &cfg.api.tls.key_file),
+        ] {
             match v.as_deref() {
-                None | Some("") => r.push(Level::Error, at("api.tls.enabled"), Some(key), format!("tls is enabled but {key} is empty")),
-                Some(p) if !p.starts_with('/') => r.push(Level::Warning, at(key), Some(key), format!("{key} '{p}' is not an absolute path")),
+                None | Some("") => r.push(
+                    Level::Error,
+                    at("api.tls.enabled"),
+                    Some(key),
+                    format!("tls is enabled but {key} is empty"),
+                ),
+                Some(p) if !p.starts_with('/') => r.push(
+                    Level::Warning,
+                    at(key),
+                    Some(key),
+                    format!("{key} '{p}' is not an absolute path"),
+                ),
                 _ => {}
             }
         }
@@ -469,65 +563,142 @@ pub fn check_yaml(text: &str) -> Report {
     // audit
     if cfg.audit.enabled {
         if !cfg.audit.path.starts_with('/') {
-            r.push(Level::Error, at("audit.path"), Some("audit.path"), "audit.path must be absolute");
+            r.push(
+                Level::Error,
+                at("audit.path"),
+                Some("audit.path"),
+                "audit.path must be absolute",
+            );
         }
         if cfg.audit.retention_days == 0 {
-            r.push(Level::Warning, at("audit.retention_days"), Some("audit.retention_days"), "retention_days 0 keeps nothing");
+            r.push(
+                Level::Warning,
+                at("audit.retention_days"),
+                Some("audit.retention_days"),
+                "retention_days 0 keeps nothing",
+            );
         }
     }
 
     // hooks
     let h = &cfg.hooks;
     if h.timeout_sec == 0 {
-        r.push(Level::Error, at("hooks.timeout_sec"), Some("hooks.timeout_sec"), "timeout_sec 0 would kill every script immediately");
+        r.push(
+            Level::Error,
+            at("hooks.timeout_sec"),
+            Some("hooks.timeout_sec"),
+            "timeout_sec 0 would kill every script immediately",
+        );
     } else if h.timeout_sec > 3600 {
-        r.push(Level::Warning, at("hooks.timeout_sec"), Some("hooks.timeout_sec"), format!("timeout_sec {} is over an hour; scripts run one at a time", h.timeout_sec));
+        r.push(
+            Level::Warning,
+            at("hooks.timeout_sec"),
+            Some("hooks.timeout_sec"),
+            format!(
+                "timeout_sec {} is over an hour; scripts run one at a time",
+                h.timeout_sec
+            ),
+        );
     }
     if h.debounce_ms > 10_000 {
-        r.push(Level::Warning, at("hooks.debounce_ms"), Some("hooks.debounce_ms"), format!("debounce_ms {} delays every hook by that long", h.debounce_ms));
+        r.push(
+            Level::Warning,
+            at("hooks.debounce_ms"),
+            Some("hooks.debounce_ms"),
+            format!(
+                "debounce_ms {} delays every hook by that long",
+                h.debounce_ms
+            ),
+        );
     }
     if h.max_parallel != 1 {
-        r.push(Level::Warning, at("hooks.max_parallel"), Some("hooks.max_parallel"), "max_parallel is reserved; scripts always run sequentially");
+        r.push(
+            Level::Warning,
+            at("hooks.max_parallel"),
+            Some("hooks.max_parallel"),
+            "max_parallel is reserved; scripts always run sequentially",
+        );
     }
     if h.max_pending == 0 {
-        r.push(Level::Error, at("hooks.max_pending"), Some("hooks.max_pending"), "max_pending must be at least 1");
+        r.push(
+            Level::Error,
+            at("hooks.max_pending"),
+            Some("hooks.max_pending"),
+            "max_pending must be at least 1",
+        );
     }
     for msg in h.sandbox.problems() {
-        r.push(Level::Error, at("hooks.sandbox"), Some("hooks.sandbox"), msg);
+        r.push(
+            Level::Error,
+            at("hooks.sandbox"),
+            Some("hooks.sandbox"),
+            msg,
+        );
     }
     for msg in h.rate_limit.problems() {
-        r.push(Level::Error, at("hooks.rate_limit"), Some("hooks.rate_limit"), msg);
+        r.push(
+            Level::Error,
+            at("hooks.rate_limit"),
+            Some("hooks.rate_limit"),
+            msg,
+        );
     }
     if h.rate_limit.enabled() && u64::from(h.rate_limit.burst) < 2 {
-        r.push(Level::Warning, at("hooks.rate_limit.burst"), Some("hooks.rate_limit.burst"),
-            "burst 1 drops the second of any two quick events for a key");
+        r.push(
+            Level::Warning,
+            at("hooks.rate_limit.burst"),
+            Some("hooks.rate_limit.burst"),
+            "burst 1 drops the second of any two quick events for a key",
+        );
     }
 
     // ebpf
     if cfg.ebpf.enabled && !(cfg.ebpf.drops || cfg.ebpf.tcp_retransmit || cfg.ebpf.tcp_reset) {
-        r.push(Level::Warning, at("ebpf.enabled"), Some("ebpf.enabled"),
-            "ebpf.enabled is true but no source (drops, tcp_retransmit, tcp_reset) is on");
+        r.push(
+            Level::Warning,
+            at("ebpf.enabled"),
+            Some("ebpf.enabled"),
+            "ebpf.enabled is true but no source (drops, tcp_retransmit, tcp_reset) is on",
+        );
     }
     if cfg.ebpf.min_count == 0 {
-        r.push(Level::Warning, at("ebpf.min_count"), Some("ebpf.min_count"), "min_count 0 never coalesces");
+        r.push(
+            Level::Warning,
+            at("ebpf.min_count"),
+            Some("ebpf.min_count"),
+            "min_count 0 never coalesces",
+        );
     }
 
     // filters
     for (n, f) in cfg.filters.iter().enumerate() {
         for s in &f.scripts {
             if s.contains('/') || s.contains("..") || s.is_empty() || s.starts_with('.') {
-                r.push(Level::Error, at("filters"), Some("filters"),
-                    format!("filter #{} script name '{s}' must be a plain file name (no '/', no '..')", n + 1));
+                r.push(
+                    Level::Error,
+                    at("filters"),
+                    Some("filters"),
+                    format!(
+                        "filter #{} script name '{s}' must be a plain file name (no '/', no '..')",
+                        n + 1
+                    ),
+                );
             }
         }
         if let Some(p) = &f.match_rule.interface_pattern {
             if let Some(msg) = pattern_problem(p) {
-                r.push(Level::Error, at("filters"), Some("filters"), format!("filter #{}: {msg}", n + 1));
+                r.push(
+                    Level::Error,
+                    at("filters"),
+                    Some("filters"),
+                    format!("filter #{}: {msg}", n + 1),
+                );
             }
         }
     }
 
-    r.diagnostics.sort_by_key(|d| (d.line.unwrap_or(usize::MAX), d.level == Level::Warning));
+    r.diagnostics
+        .sort_by_key(|d| (d.line.unwrap_or(usize::MAX), d.level == Level::Warning));
     r
 }
 
@@ -538,16 +709,31 @@ pub fn check_file(path: &Path) -> Report {
     let meta = match std::fs::metadata(path) {
         Ok(m) => m,
         Err(e) => {
-            r.push(Level::Error, None, None, format!("cannot read {}: {e}", path.display()));
+            r.push(
+                Level::Error,
+                None,
+                None,
+                format!("cannot read {}: {e}", path.display()),
+            );
             return r;
         }
     };
     if !meta.is_file() {
-        r.push(Level::Error, None, None, format!("{} is not a regular file", path.display()));
+        r.push(
+            Level::Error,
+            None,
+            None,
+            format!("{} is not a regular file", path.display()),
+        );
         return r;
     }
     if meta.len() as usize > MAX_CONFIG_BYTES {
-        r.push(Level::Error, None, None, format!("{} is larger than {MAX_CONFIG_BYTES} bytes", path.display()));
+        r.push(
+            Level::Error,
+            None,
+            None,
+            format!("{} is larger than {MAX_CONFIG_BYTES} bytes", path.display()),
+        );
         return r;
     }
     let text = match std::fs::read(path) {
@@ -559,13 +745,23 @@ pub fn check_file(path: &Path) -> Report {
             }
         },
         Err(e) => {
-            r.push(Level::Error, None, None, format!("cannot read {}: {e}", path.display()));
+            r.push(
+                Level::Error,
+                None,
+                None,
+                format!("cannot read {}: {e}", path.display()),
+            );
             return r;
         }
     };
     let mut inner = check_yaml(&text);
     if meta.mode() & 0o002 != 0 {
-        inner.push(Level::Warning, None, None, "configuration file is world-writable (SECURITY.md: chmod 640)");
+        inner.push(
+            Level::Warning,
+            None,
+            None,
+            "configuration file is world-writable (SECURITY.md: chmod 640)",
+        );
     }
     inner
 }
@@ -575,7 +771,10 @@ mod tests {
     use super::*;
 
     fn msgs(r: &Report) -> Vec<String> {
-        r.diagnostics.iter().map(|d| format!("{:?}:{:?}:{}", d.level, d.line, d.message)).collect()
+        r.diagnostics
+            .iter()
+            .map(|d| format!("{:?}:{:?}:{}", d.level, d.line, d.message))
+            .collect()
     }
 
     #[test]
@@ -583,7 +782,11 @@ mod tests {
         let text = include_str!("../../config/netevd.example.yaml");
         let r = check_yaml(text);
         assert_eq!(r.errors(), 0, "{:#?}", msgs(&r));
-        let unknown: Vec<_> = r.diagnostics.iter().filter(|d| d.message.contains("unknown key")).collect();
+        let unknown: Vec<_> = r
+            .diagnostics
+            .iter()
+            .filter(|d| d.message.contains("unknown key"))
+            .collect();
         assert!(unknown.is_empty(), "{unknown:#?}");
     }
 
@@ -595,10 +798,15 @@ mod tests {
 
     #[test]
     fn typo_gets_line_number_and_suggestion() {
-        let r = check_yaml("system:\n  backend: dhclient\nhooks:\n  debounce_ms: 5\n  timout_sec: 5\n");
+        let r =
+            check_yaml("system:\n  backend: dhclient\nhooks:\n  debounce_ms: 5\n  timout_sec: 5\n");
         let d = &r.diagnostics[0];
         assert_eq!(d.line, Some(5));
-        assert!(d.message.contains("did you mean 'timeout_sec'"), "{}", d.message);
+        assert!(
+            d.message.contains("did you mean 'timeout_sec'"),
+            "{}",
+            d.message
+        );
         assert_eq!(r.errors(), 0);
         assert!(!r.ok(true));
         assert!(r.ok(false));
@@ -617,7 +825,11 @@ mod tests {
     fn semantic_errors_point_at_their_key() {
         let r = check_yaml("system:\n  backend: bogus\nhooks:\n  timeout_sec: 0\n");
         let m = msgs(&r);
-        assert!(m.iter().any(|s| s.starts_with("Error:Some(2):") && s.contains("invalid backend")), "{m:?}");
+        assert!(
+            m.iter()
+                .any(|s| s.starts_with("Error:Some(2):") && s.contains("invalid backend")),
+            "{m:?}"
+        );
         assert!(m.iter().any(|s| s.starts_with("Error:Some(4):")), "{m:?}");
     }
 
@@ -639,12 +851,16 @@ mod tests {
         let y = "hooks:\n  sandbox:\n    workdir: relative\n    umask: 9999\n  rate_limit:\n    burst: 5\n    per_minute: 0\n";
         let r = check_yaml(y);
         assert!(r.errors() >= 3, "{:#?}", msgs(&r));
-        assert!(r.diagnostics.iter().any(|d| d.line == Some(2) || d.line == Some(5)));
+        assert!(r
+            .diagnostics
+            .iter()
+            .any(|d| d.line == Some(2) || d.line == Some(5)));
     }
 
     #[test]
     fn nested_unknown_key_and_lists() {
-        let y = "hooks:\n  sandbox:\n    wokdir: /\nmonitoring:\n  exclude:\n    - lo\n  bogus: 1\n";
+        let y =
+            "hooks:\n  sandbox:\n    wokdir: /\nmonitoring:\n  exclude:\n    - lo\n  bogus: 1\n";
         let r = check_yaml(y);
         let lines: Vec<_> = r.diagnostics.iter().filter_map(|d| d.line).collect();
         assert_eq!(lines, [3, 7]);
@@ -658,7 +874,16 @@ mod tests {
         let paths: Vec<_> = keys.iter().map(|(p, _)| p.as_str()).collect();
         assert_eq!(
             paths,
-            ["system", "system.backend", "system.log_level", "filters", "filters[].match_rule", "filters[].match_rule.interface", "filters[].action", "filters[].note"]
+            [
+                "system",
+                "system.backend",
+                "system.log_level",
+                "filters",
+                "filters[].match_rule",
+                "filters[].match_rule.interface",
+                "filters[].action",
+                "filters[].note"
+            ]
         );
     }
 

@@ -16,9 +16,9 @@ use tracing::warn;
 use super::coalesce::Coalescer;
 #[cfg(feature = "ebpf")]
 use super::decode;
-use super::events::{self, ObsEvent};
 #[cfg(feature = "ebpf")]
 use super::events::KIND_RST;
+use super::events::{self, ObsEvent};
 use super::loader;
 use crate::config::Config;
 #[cfg(feature = "ebpf")]
@@ -111,9 +111,8 @@ async fn run(
             Duration::from_millis(config.ebpf.debounce_ms),
             config.ebpf.min_count,
         );
-        let mut tick = tokio::time::interval(Duration::from_millis(
-            config.ebpf.debounce_ms.max(20),
-        ));
+        let mut tick =
+            tokio::time::interval(Duration::from_millis(config.ebpf.debounce_ms.max(20)));
         let mut last_lost = 0u64;
         loop {
             while let Some(item) = ring.next() {

@@ -6,6 +6,6 @@
 pub mod capability;
 pub mod execute;
 pub mod paths;
+pub mod sandbox;
 pub mod user;
 pub mod validation;
-pub mod sandbox;

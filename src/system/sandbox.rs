@@ -126,7 +126,10 @@ impl SandboxConfig {
     pub fn problems(&self) -> Vec<String> {
         let mut out = Vec::new();
         if !self.workdir.starts_with('/') || self.workdir.contains('\0') {
-            out.push(format!("sandbox.workdir '{}' must be an absolute path", self.workdir));
+            out.push(format!(
+                "sandbox.workdir '{}' must be an absolute path",
+                self.workdir
+            ));
         }
         if self.umask > 0o777 {
             out.push(format!(
@@ -136,9 +139,13 @@ impl SandboxConfig {
         }
         for name in &self.pass_env {
             if !valid_env_name(name) {
-                out.push(format!("sandbox.pass_env entry '{name}' is not a valid variable name"));
+                out.push(format!(
+                    "sandbox.pass_env entry '{name}' is not a valid variable name"
+                ));
             } else if NEVER_PASS.contains(&name.as_str()) {
-                out.push(format!("sandbox.pass_env entry '{name}' is never passed through"));
+                out.push(format!(
+                    "sandbox.pass_env entry '{name}' is never passed through"
+                ));
             }
         }
         if self.max_env_bytes < 4096 {
@@ -190,7 +197,9 @@ fn variable_ok(key: &str, value: &str) -> bool {
             validation::validate_ip_list(value)
         }
         "STATE" => validation::validate_state_name(value),
-        "LINKINDEX" => !value.is_empty() && value.len() <= 10 && value.chars().all(|c| c.is_ascii_digit()),
+        "LINKINDEX" => {
+            !value.is_empty() && value.len() <= 10 && value.chars().all(|c| c.is_ascii_digit())
+        }
         // Serialized by our own code; shell safety is not needed because
         // scripts are exec'd directly and the value is never re-parsed.
         "JSON" => !value.contains('\0'),
@@ -206,10 +215,8 @@ pub fn prepare_env(
     daemon_env: &dyn Fn(&str) -> Option<String>,
 ) -> PreparedEnv {
     let mut out = PreparedEnv::default();
-    out.vars.insert(
-        "PATH".into(),
-        "/usr/sbin:/usr/bin:/sbin:/bin".into(),
-    );
+    out.vars
+        .insert("PATH".into(), "/usr/sbin:/usr/bin:/sbin:/bin".into());
     for name in &cfg.pass_env {
         if !valid_env_name(name) || NEVER_PASS.contains(&name.as_str()) {
             continue;
@@ -229,7 +236,8 @@ pub fn prepare_env(
     for key in keys {
         let value = &event_vars[key];
         if !valid_env_name(key) {
-            out.rejected.push((key.clone(), "invalid variable name".into()));
+            out.rejected
+                .push((key.clone(), "invalid variable name".into()));
             continue;
         }
         if key == "PATH" {
@@ -238,8 +246,10 @@ pub fn prepare_env(
             continue;
         }
         if key.len() + value.len() + 2 > MAX_ENV_STRING {
-            out.rejected
-                .push((key.clone(), format!("value larger than {MAX_ENV_STRING} bytes")));
+            out.rejected.push((
+                key.clone(),
+                format!("value larger than {MAX_ENV_STRING} bytes"),
+            ));
             continue;
         }
         if !variable_ok(key, value) {
@@ -251,7 +261,10 @@ pub fn prepare_env(
         if total + cost > cfg.max_env_bytes {
             out.rejected.push((
                 key.clone(),
-                format!("environment budget of {} bytes exhausted", cfg.max_env_bytes),
+                format!(
+                    "environment budget of {} bytes exhausted",
+                    cfg.max_env_bytes
+                ),
             ));
             continue;
         }
@@ -313,7 +326,16 @@ pub fn script_name_ok(name: &str) -> Result<(), String> {
     if name.chars().any(|c| c.is_control()) {
         return Err("control character in name".into());
     }
-    for suffix in ["~", ".bak", ".orig", ".rpmsave", ".rpmnew", ".dpkg-old", ".dpkg-new", ".swp"] {
+    for suffix in [
+        "~",
+        ".bak",
+        ".orig",
+        ".rpmsave",
+        ".rpmnew",
+        ".dpkg-old",
+        ".dpkg-new",
+        ".swp",
+    ] {
         if name.ends_with(suffix) {
             return Err(format!("backup/leftover suffix {suffix}"));
         }
@@ -333,10 +355,16 @@ pub fn apply_in_child(cfg: &SandboxConfig) -> std::io::Result<()> {
         };
         // Lowering only: if the hard limit is already lower, setrlimit
         // fails with EPERM when raising, so clamp to the current maximum.
-        let mut cur = libc::rlimit { rlim_cur: 0, rlim_max: 0 };
+        let mut cur = libc::rlimit {
+            rlim_cur: 0,
+            rlim_max: 0,
+        };
         // SAFETY: plain syscalls on stack structs.
         unsafe {
-            if libc::getrlimit(res as _, &mut cur) == 0 && cur.rlim_max != libc::RLIM_INFINITY && lim.rlim_max > cur.rlim_max {
+            if libc::getrlimit(res as _, &mut cur) == 0
+                && cur.rlim_max != libc::RLIM_INFINITY
+                && lim.rlim_max > cur.rlim_max
+            {
                 return Ok(());
             }
             if libc::setrlimit(res as _, &lim) != 0 {
@@ -355,10 +383,16 @@ pub fn apply_in_child(cfg: &SandboxConfig) -> std::io::Result<()> {
         set(libc::RLIMIT_CPU as i32, cfg.rlimit_cpu_sec)?;
     }
     if cfg.rlimit_as_mb > 0 {
-        set(libc::RLIMIT_AS as i32, cfg.rlimit_as_mb.saturating_mul(1 << 20))?;
+        set(
+            libc::RLIMIT_AS as i32,
+            cfg.rlimit_as_mb.saturating_mul(1 << 20),
+        )?;
     }
     if cfg.rlimit_fsize_mb > 0 {
-        set(libc::RLIMIT_FSIZE as i32, cfg.rlimit_fsize_mb.saturating_mul(1 << 20))?;
+        set(
+            libc::RLIMIT_FSIZE as i32,
+            cfg.rlimit_fsize_mb.saturating_mul(1 << 20),
+        )?;
     }
     // SAFETY: umask is async-signal-safe and cannot fail.
     unsafe {
@@ -376,7 +410,10 @@ mod tests {
     }
 
     fn vars(pairs: &[(&str, &str)]) -> HashMap<String, String> {
-        pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
     }
 
     #[test]
@@ -389,29 +426,63 @@ mod tests {
 
     #[test]
     fn injection_through_interface_name_rejected() {
-        for bad in ["eth0;reboot", "$(id)", "eth0\nPATH=/tmp", "`id`", "a b", "../x", "..", ".", "eth0|x", &"a".repeat(16)] {
+        for bad in [
+            "eth0;reboot",
+            "$(id)",
+            "eth0\nPATH=/tmp",
+            "`id`",
+            "a b",
+            "../x",
+            "..",
+            ".",
+            "eth0|x",
+            &"a".repeat(16),
+        ] {
             let p = prepare_env(&vars(&[("LINK", bad)]), &SandboxConfig::default(), &no_env);
             assert!(!p.vars.contains_key("LINK"), "accepted {bad:?}");
             assert_eq!(p.rejected.len(), 1);
         }
-        let ok = prepare_env(&vars(&[("LINK", "eth0")]), &SandboxConfig::default(), &no_env);
+        let ok = prepare_env(
+            &vars(&[("LINK", "eth0")]),
+            &SandboxConfig::default(),
+            &no_env,
+        );
         assert_eq!(ok.vars["LINK"], "eth0");
     }
 
     #[test]
     fn injection_through_addresses_rejected() {
-        for bad in ["10.0.0.1; rm -rf /", "10.0.0.1 $(id)", "::1\n127.0.0.1", "10.0.0.1/24"] {
-            let p = prepare_env(&vars(&[("ADDRESSES", bad)]), &SandboxConfig::default(), &no_env);
+        for bad in [
+            "10.0.0.1; rm -rf /",
+            "10.0.0.1 $(id)",
+            "::1\n127.0.0.1",
+            "10.0.0.1/24",
+        ] {
+            let p = prepare_env(
+                &vars(&[("ADDRESSES", bad)]),
+                &SandboxConfig::default(),
+                &no_env,
+            );
             assert!(!p.vars.contains_key("ADDRESSES"), "accepted {bad:?}");
         }
-        let ok = prepare_env(&vars(&[("ADDRESSES", "10.0.0.1 fe80::1")]), &SandboxConfig::default(), &no_env);
+        let ok = prepare_env(
+            &vars(&[("ADDRESSES", "10.0.0.1 fe80::1")]),
+            &SandboxConfig::default(),
+            &no_env,
+        );
         assert!(ok.vars.contains_key("ADDRESSES"));
     }
 
     #[test]
     fn hostile_variable_names_rejected() {
         let p = prepare_env(
-            &vars(&[("LD_PRELOAD=/x", "1"), ("A B", "1"), ("", "1"), ("1A", "1"), ("PATH", "/tmp")]),
+            &vars(&[
+                ("LD_PRELOAD=/x", "1"),
+                ("A B", "1"),
+                ("", "1"),
+                ("1A", "1"),
+                ("PATH", "/tmp"),
+            ]),
             &SandboxConfig::default(),
             &no_env,
         );
@@ -422,12 +493,19 @@ mod tests {
     #[test]
     fn huge_values_dropped_and_budget_enforced() {
         let huge = "1".repeat(MAX_ENV_STRING);
-        let p = prepare_env(&vars(&[("COUNT", &huge), ("LINK", "eth0")]), &SandboxConfig::default(), &no_env);
+        let p = prepare_env(
+            &vars(&[("COUNT", &huge), ("LINK", "eth0")]),
+            &SandboxConfig::default(),
+            &no_env,
+        );
         assert!(!p.vars.contains_key("COUNT"));
         assert!(p.vars.contains_key("LINK"));
 
         // JSON is shed first when the total budget runs out.
-        let cfg = SandboxConfig { max_env_bytes: 4096, ..Default::default() };
+        let cfg = SandboxConfig {
+            max_env_bytes: 4096,
+            ..Default::default()
+        };
         let json = "x".repeat(5000);
         let p = prepare_env(&vars(&[("JSON", &json), ("LINK", "eth0")]), &cfg, &no_env);
         assert!(p.vars.contains_key("LINK"));
@@ -438,7 +516,12 @@ mod tests {
     #[test]
     fn passthrough_is_filtered() {
         let cfg = SandboxConfig {
-            pass_env: vec!["HOME".into(), "LD_PRELOAD".into(), "BAD NAME".into(), "TZ".into()],
+            pass_env: vec![
+                "HOME".into(),
+                "LD_PRELOAD".into(),
+                "BAD NAME".into(),
+                "TZ".into(),
+            ],
             ..Default::default()
         };
         let env = |k: &str| Some(format!("val-{k}"));
@@ -453,17 +536,44 @@ mod tests {
     #[test]
     fn judge_script_rules() {
         let cfg = SandboxConfig::default();
-        let strict = SandboxConfig { strict_script_perms: true, ..Default::default() };
-        let m = |mode, uid| ScriptMeta { is_file: true, mode, uid };
+        let strict = SandboxConfig {
+            strict_script_perms: true,
+            ..Default::default()
+        };
+        let m = |mode, uid| ScriptMeta {
+            is_file: true,
+            mode,
+            uid,
+        };
         assert_eq!(judge_script(&m(0o755, 0), &cfg, 999), Verdict::Run);
-        assert_eq!(judge_script(&m(0o644, 0), &cfg, 999), Verdict::Skip("not executable".into()));
+        assert_eq!(
+            judge_script(&m(0o644, 0), &cfg, 999),
+            Verdict::Skip("not executable".into())
+        );
         assert_eq!(judge_script(&m(0o777, 1000), &cfg, 999), Verdict::Run);
-        assert!(matches!(judge_script(&m(0o777, 0), &strict, 999), Verdict::Skip(_)));
-        assert!(matches!(judge_script(&m(0o4755, 0), &strict, 999), Verdict::Skip(_)));
-        assert!(matches!(judge_script(&m(0o755, 1000), &strict, 999), Verdict::Skip(_)));
+        assert!(matches!(
+            judge_script(&m(0o777, 0), &strict, 999),
+            Verdict::Skip(_)
+        ));
+        assert!(matches!(
+            judge_script(&m(0o4755, 0), &strict, 999),
+            Verdict::Skip(_)
+        ));
+        assert!(matches!(
+            judge_script(&m(0o755, 1000), &strict, 999),
+            Verdict::Skip(_)
+        ));
         assert_eq!(judge_script(&m(0o750, 999), &strict, 999), Verdict::Run);
         assert_eq!(
-            judge_script(&ScriptMeta { is_file: false, mode: 0o755, uid: 0 }, &cfg, 0),
+            judge_script(
+                &ScriptMeta {
+                    is_file: false,
+                    mode: 0o755,
+                    uid: 0
+                },
+                &cfg,
+                0
+            ),
             Verdict::Skip("not a regular file".into())
         );
     }
@@ -471,14 +581,29 @@ mod tests {
     #[test]
     fn script_names() {
         assert!(script_name_ok("01-notify.sh").is_ok());
-        for bad in ["", ".hidden", "a/b", "../x", "x\ny", "x~", "x.bak", "x.dpkg-old", "a\u{7}b"] {
+        for bad in [
+            "",
+            ".hidden",
+            "a/b",
+            "../x",
+            "x\ny",
+            "x~",
+            "x.bak",
+            "x.dpkg-old",
+            "a\u{7}b",
+        ] {
             assert!(script_name_ok(bad).is_err(), "{bad:?}");
         }
     }
 
     #[test]
     fn problems_reported() {
-        let cfg = SandboxConfig { workdir: "rel".into(), umask: 9999, max_env_bytes: 10, ..Default::default() };
+        let cfg = SandboxConfig {
+            workdir: "rel".into(),
+            umask: 9999,
+            max_env_bytes: 10,
+            ..Default::default()
+        };
         assert_eq!(cfg.problems().len(), 3);
     }
 }
