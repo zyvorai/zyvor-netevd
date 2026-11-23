@@ -2,6 +2,8 @@
 # https://lychee.cli.rs/config/#config-file
 
 exclude = [
+  # GHCR package page: answers 404 to anonymous requests until the package is public.
+  '^https://github\.com/zyvorai/zyvor-netevd/pkgs/container/netevd$',
   # Doc/code examples showing how to talk to a locally-running netevd, not
   # real checkable hyperlinks.
   '^https?://localhost([:/]|$)',

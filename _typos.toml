@@ -5,6 +5,9 @@
 # rtnetlink's RouteAttribute::Oif ("output interface") — a real netlink field
 # name, not a typo of "Of".
 Oif = "Oif"
+# Linux TCP out-of-order queue ("OFO"): kernel counter names such as
+# TCP_OFO_QUEUE_PRUNE in src/ebpf/events.rs, not a typo of "OF".
+OFO = "OFO"
 
 [default.extend-words]
 # Substring of the test fixture "val$ue" in
