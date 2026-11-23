@@ -3,6 +3,7 @@
 
 //! Configuration parsing and management
 
+pub mod check;
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
