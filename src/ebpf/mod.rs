@@ -15,9 +15,6 @@ pub mod service;
 
 pub use service::spawn;
 
-#[cfg(test)]
-pub use events::{ObsEvent, SampleKey};
-
 use crate::config::EbpfConfig;
 
 pub fn is_requested(cfg: &EbpfConfig) -> bool {

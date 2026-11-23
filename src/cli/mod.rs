@@ -114,11 +114,55 @@ pub enum Commands {
         endpoint: String,
     },
 
-    /// Validate configuration file
+    /// Check the configuration: line-numbered errors and warnings
+    #[command(name = "check-config", alias = "validate")]
     Validate {
-        /// Configuration file to validate
+        /// Configuration file to check (default: the global --config)
         #[arg(short, long)]
         config: Option<PathBuf>,
+
+        /// Treat warnings (unknown keys, risky values) as failures
+        #[arg(long)]
+        strict: bool,
+
+        /// Output format (text or json)
+        #[arg(short, long, default_value = "text")]
+        format: OutputFormat,
+    },
+
+    /// Show which scripts would run for an event, without running anything
+    Explain {
+        /// Hook state, e.g. routable, address-added, mtu
+        #[arg(required_unless_present = "from_file")]
+        event: Option<String>,
+
+        /// Interface name
+        #[arg(short, long, default_value = "eth0")]
+        link: String,
+
+        /// Interface index
+        #[arg(long, default_value_t = 2)]
+        index: u32,
+
+        /// Event source (netlink applies the interface selector)
+        #[arg(long, default_value = "netlink")]
+        backend: String,
+
+        /// Address on the interface (repeatable)
+        #[arg(long = "address")]
+        addresses: Vec<String>,
+
+        /// Hook root directory (default /etc/netevd)
+        #[arg(long)]
+        config_root: Option<PathBuf>,
+
+        /// Replay recorded netevd.event.v1 events, one JSON object per line
+        #[arg(long, conflicts_with = "event")]
+        from_file: Option<PathBuf>,
+
+        /// Output format (text or json)
+        #[arg(short, long, default_value = "text")]
+        format: OutputFormat,
     },
 
     /// Test a script execution

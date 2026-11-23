@@ -55,7 +55,7 @@ impl ObsEvent {
         }
     }
 
-    pub fn to_hook(&self, link: &str, count: u64) -> HookEventV1 {
+    pub fn to_hook(self, link: &str, count: u64) -> HookEventV1 {
         match self.kind {
             KIND_RTX => {
                 let mut ev = HookEventV1::new("tcp-retransmit", link, self.ifindex, "ebpf");

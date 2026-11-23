@@ -61,8 +61,7 @@ pub mod aya_attach {
                 "tcp",
                 "tcp_receive_reset",
             )?;
-            attachments +=
-                attach_tp(&mut bpf, "observe_tcp_send_reset", "tcp", "tcp_send_reset")?;
+            attachments += attach_tp(&mut bpf, "observe_tcp_send_reset", "tcp", "tcp_send_reset")?;
         }
         Ok(Loaded { bpf, attachments })
     }
@@ -113,8 +112,10 @@ mod tests {
 
     #[test]
     fn resolve_empty_when_missing() {
-        let mut cfg = EbpfConfig::default();
-        cfg.object_path = "/no/such/netevd-ebpf.o".into();
+        let cfg = EbpfConfig {
+            object_path: "/no/such/netevd-ebpf.o".into(),
+            ..Default::default()
+        };
         assert!(resolve_object(&cfg).is_none());
     }
 }

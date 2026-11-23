@@ -72,6 +72,10 @@ impl Coalescer {
         out
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn len(&self) -> usize {
         self.buckets.len()
     }
@@ -80,7 +84,7 @@ impl Coalescer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ebpf::events::{KIND_DROP, ObsEvent};
+    use crate::ebpf::events::{ObsEvent, KIND_DROP};
 
     fn sample(ifindex: u32, reason: u32) -> ObsEvent {
         ObsEvent {

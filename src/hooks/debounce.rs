@@ -21,7 +21,12 @@ pub struct HookDebouncer {
     window: Duration,
     pending: HashMap<String, Pending>,
     coalesced_total: u64,
+    max_pending: usize,
+    overflow_total: u64,
 }
+
+/// Default cap on distinct pending (link, event) keys.
+pub const DEFAULT_MAX_PENDING: usize = 4096;
 
 impl HookDebouncer {
     pub fn new(window: Duration) -> Self {
@@ -29,7 +34,20 @@ impl HookDebouncer {
             window,
             pending: HashMap::new(),
             coalesced_total: 0,
+            max_pending: DEFAULT_MAX_PENDING,
+            overflow_total: 0,
         }
+    }
+
+    /// Bound the number of distinct pending keys; past it, new keys are
+    /// handed straight back to the caller instead of being queued.
+    pub fn with_max_pending(mut self, max: usize) -> Self {
+        self.max_pending = max.max(1);
+        self
+    }
+
+    pub fn overflow_total(&self) -> u64 {
+        self.overflow_total
     }
 
     pub fn from_millis(ms: u64) -> Self {
@@ -46,6 +64,7 @@ impl HookDebouncer {
     pub fn push(&mut self, event: HookEventV1) -> Option<HookEventV1> {
         let now = Instant::now();
         let key = Self::key(&event);
+        let full = self.pending.len() >= self.max_pending;
         match self.pending.get_mut(&key) {
             Some(p) if now.duration_since(p.first_seen) <= self.window => {
                 self.coalesced_total += 1;
@@ -66,6 +85,12 @@ impl HookDebouncer {
                     },
                 );
                 Some(old.event)
+            }
+            None if full => {
+                // Table full (hostile or runaway key churn): do not grow
+                // without bound, dispatch immediately instead.
+                self.overflow_total += 1;
+                Some(event)
             }
             None => {
                 self.pending.insert(
@@ -165,6 +190,22 @@ mod tests {
         assert_eq!(ready.len(), 1);
         assert_eq!(ready[0].event, "address-added");
         assert_eq!(d.pending_len(), 0);
+    }
+
+    #[test]
+    fn pending_table_is_bounded() {
+        let mut d = HookDebouncer::from_millis(10_000).with_max_pending(8);
+        let mut immediate = 0;
+        for i in 0..1000 {
+            if d.push(ev(&format!("veth{i}"), "link-added")).is_some() {
+                immediate += 1;
+            }
+        }
+        assert_eq!(d.pending_len(), 8);
+        assert_eq!(immediate, 992);
+        assert_eq!(d.overflow_total(), 992);
+        // an already-pending key still coalesces when the table is full
+        assert!(d.push(ev("veth0", "link-added")).is_none());
     }
 
     #[test]

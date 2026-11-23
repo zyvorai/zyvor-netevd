@@ -45,6 +45,8 @@ nav:
   - Enterprise: enterprise.md
   - Roadmap: ROADMAP.md
   - Hook Contract: hooks-contract.md
+  - Hardening and Tooling: hardening.md
+  - Research: RESEARCH.md
   - User Guide:
       - Overview: user/README.md
       - Getting Started: user/getting-started.md

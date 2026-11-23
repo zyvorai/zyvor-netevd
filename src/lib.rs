@@ -24,6 +24,6 @@ pub mod api;
 pub mod audit;
 pub mod cli;
 pub mod cloud;
+pub mod ebpf;
 pub mod filters;
 pub mod metrics;
-pub mod ebpf;

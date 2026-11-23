@@ -29,10 +29,32 @@ pub async fn handle_command(cli: Cli) -> Result<()> {
             endpoint,
         }) => handle_events(follow, interface, event_type, tail, format, &endpoint).await,
         Some(Commands::Reload { endpoint }) => handle_reload(&endpoint).await,
-        Some(Commands::Validate { config }) => handle_validate(
-            config
-                .as_deref()
-                .unwrap_or(Path::new("/etc/netevd/netevd.yaml")),
+        Some(Commands::Validate {
+            config,
+            strict,
+            format,
+        }) => handle_check_config(&config.unwrap_or(cli.config), strict, format),
+        Some(Commands::Explain {
+            event,
+            link,
+            index,
+            backend,
+            addresses,
+            config_root,
+            from_file,
+            format,
+        }) => handle_explain(
+            &cli.config,
+            ExplainArgs {
+                event,
+                link,
+                index,
+                backend,
+                addresses,
+                config_root,
+                from_file,
+            },
+            format,
         ),
         Some(Commands::Test {
             script,
@@ -160,28 +182,90 @@ async fn handle_reload(endpoint: &str) -> Result<()> {
     Ok(())
 }
 
-fn handle_validate(config_path: &Path) -> Result<()> {
-    println!("Validating configuration file: {}", config_path.display());
+fn handle_check_config(path: &Path, strict: bool, format: OutputFormat) -> Result<()> {
+    let report = crate::config::check::check_file(path);
+    let file = path.display().to_string();
+    match format {
+        OutputFormat::Json => println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "file": file,
+                "ok": report.ok(strict),
+                "errors": report.errors(),
+                "warnings": report.warnings(),
+                "diagnostics": report.diagnostics,
+            }))?
+        ),
+        _ => print!("{}", report.render_text(&file)),
+    }
+    if report.ok(strict) {
+        Ok(())
+    } else {
+        anyhow::bail!(
+            "configuration check failed: {} error(s), {} warning(s){}",
+            report.errors(),
+            report.warnings(),
+            if strict { " (strict)" } else { "" }
+        )
+    }
+}
 
-    match Config::parse_from_path(&config_path.to_string_lossy()) {
-        Ok(config) => {
-            println!("✓ Configuration is valid");
-            println!("\nConfiguration summary:");
-            println!("  Log level: {}", config.system.log_level);
-            println!("  Backend: {}", config.system.backend);
-            println!("  Interfaces: {}", config.monitoring.interfaces.join(", "));
-            println!(
-                "  Routing policy rules: {}",
-                config.routing.policy_rules.join(", ")
-            );
-            Ok(())
+struct ExplainArgs {
+    event: Option<String>,
+    link: String,
+    index: u32,
+    backend: String,
+    addresses: Vec<String>,
+    config_root: Option<std::path::PathBuf>,
+    from_file: Option<std::path::PathBuf>,
+}
+
+fn handle_explain(config_path: &Path, a: ExplainArgs, format: OutputFormat) -> Result<()> {
+    use crate::hooks::explain::{default_root, explain_event, load_events, synthetic_event};
+    // A missing config file means defaults, exactly as the daemon does.
+    let config = Config::parse_from_path(&config_path.to_string_lossy())?;
+    let root = a.config_root.unwrap_or_else(default_root);
+    let uid = nix::unistd::Uid::effective().as_raw();
+    let env = |k: &str| std::env::var(k).ok();
+
+    let events = if let Some(f) = &a.from_file {
+        let meta = std::fs::metadata(f)?;
+        if meta.len() > 64 * 1024 * 1024 {
+            anyhow::bail!("{} is larger than 64 MiB", f.display());
         }
-        Err(e) => {
-            eprintln!("✗ Configuration validation failed:");
-            eprintln!("  {}", e);
-            Err(e)
+        let text = String::from_utf8_lossy(&std::fs::read(f)?).into_owned();
+        let (events, errors) = load_events(&text);
+        for e in &errors {
+            eprintln!("warning: {}: {e}", f.display());
+        }
+        events
+    } else {
+        let name = a.event.unwrap_or_default();
+        vec![synthetic_event(
+            &name,
+            &a.link,
+            a.index,
+            &a.backend,
+            a.addresses,
+        )]
+    };
+
+    let explained: Vec<_> = events
+        .iter()
+        .map(|ev| explain_event(ev, &config, &root, uid, &env))
+        .collect();
+    match format {
+        OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&explained)?),
+        _ => {
+            for (i, x) in explained.iter().enumerate() {
+                if explained.len() > 1 {
+                    println!("--- event {} of {} ---", i + 1, explained.len());
+                }
+                print!("{}", x.render_text());
+            }
         }
     }
+    Ok(())
 }
 
 async fn handle_test_script(
@@ -197,15 +281,27 @@ async fn handle_test_script(
         println!("  IP address: {}", ip_addr);
     }
 
-    println!("\nDry-run environment (script not actually executed):");
-    println!("  LINK={}", interface);
-    println!("  STATE={}", event_type);
-    println!("  BACKEND=test");
+    println!("\nEnvironment the script would receive (nothing is executed):");
+    let mut vars = std::collections::HashMap::new();
+    vars.insert("LINK".to_string(), interface.to_string());
+    vars.insert("STATE".to_string(), event_type.to_string());
+    vars.insert("EVENT".to_string(), event_type.to_string());
+    vars.insert("BACKEND".to_string(), "test".to_string());
     if let Some(ip_addr) = ip {
-        println!("  ADDRESSES={}", ip_addr);
+        vars.insert("ADDRESSES".to_string(), ip_addr);
+    }
+    let config = Config::default();
+    let prepared = crate::system::sandbox::prepare_env(&vars, &config.hooks.sandbox, &|k| {
+        std::env::var(k).ok()
+    });
+    for (k, v) in &prepared.vars {
+        println!("  {k}={v}");
+    }
+    for (k, why) in &prepared.rejected {
+        println!("  rejected: {k} ({why})");
     }
 
-    println!("\nNote: actual script execution not yet implemented in test mode");
+    println!("\nUse `netevd explain <event>` to see which scripts would run.");
 
     Ok(())
 }
