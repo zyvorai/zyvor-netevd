@@ -12,7 +12,7 @@ env:
 jobs:
   docs:
     name: Build Documentation
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || '["self-hosted","Linux","ARM64","zyvor-build","docker"]') }}
     # Needed to push the generated rustdoc HTML to gh-pages below — the repo's
     # default GITHUB_TOKEN permissions are read-only.
     permissions:
@@ -43,7 +43,7 @@ jobs:
 
   spelling:
     name: Spell Check
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || '["self-hosted","Linux","ARM64","zyvor-build","docker"]') }}
     steps:
       - uses: actions/checkout@v6
 
@@ -58,7 +58,7 @@ jobs:
 
   links:
     name: Link Check
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && '"ubuntu-latest"' || '["self-hosted","Linux","ARM64","zyvor-build","docker"]') }}
     steps:
       - uses: actions/checkout@v6
 
