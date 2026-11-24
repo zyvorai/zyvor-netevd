@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["create_api_routes","create_api_routes_with_log"]};

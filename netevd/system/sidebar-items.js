@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["capability","execute","paths","sandbox","user","validation"]};

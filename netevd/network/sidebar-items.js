@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["address","ipv6","link","route","routing_rule","startup","watcher"],"struct":["NetworkState","RouteEntry","RoutingRule"]};

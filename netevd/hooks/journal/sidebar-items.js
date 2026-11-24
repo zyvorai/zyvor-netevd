@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_HISTORY","DEFAULT_JOURNAL_MAX_BYTES"],"fn":["global","set_global"],"struct":["EventFilter","EventLog","JournalRecord"]};

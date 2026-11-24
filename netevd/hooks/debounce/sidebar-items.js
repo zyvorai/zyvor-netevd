@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_MAX_PENDING"],"fn":["coalesce_count"],"struct":["HookDebouncer"]};

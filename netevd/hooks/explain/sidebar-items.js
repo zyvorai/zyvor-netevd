@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MAX_EVENTS","MAX_EVENT_LINE"],"fn":["default_root","explain_event","load_events","synthetic_event"],"struct":["EnvLine","Explanation","ScriptLine"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["MAX_ENV_STRING"],"enum":["Verdict"],"fn":["apply_in_child","global","judge_script","prepare_env","script_name_ok","set_global","valid_env_name"],"struct":["PreparedEnv","SandboxConfig","ScriptMeta"]};
