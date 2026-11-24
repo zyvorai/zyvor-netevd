@@ -9,7 +9,7 @@
 - `cargo update` (tokio 1.54, hyper 1.12, zbus 6.5, uuid 1.29, regex 1.13, ...). Manifest floors raised to match.
 - Removed unused dependencies: `ini`, `ipnetwork`, `signal-hook`, `signal-hook-tokio`, `tokio-stream`.
 - MSRV 1.87 -> 1.91: forced by the transitive `notify-types` 2.3 (zbus 6.5 and uuid 1.29 need 1.89). The `msrv` CI job follows.
-  The optional `ebpf` feature (aya 0.16) declares rust 1.98.
+  The optional `ebpf` feature (aya 0.16) declares rust 1.98; the MSRV is raised to 1.98 so `cargo check --all-features` passes.
 - Held back: `netlink-packet-core` stays at 0.9 (the only newer release is 1.0.0-rc2, a prerelease, and `rtnetlink` 0.24
   still depends on 0.9). `serde_yaml` 0.9 is deprecated upstream and has no drop-in successor in this tree; left as is.
 - Clippy (Rust 1.100) cleanups so `-D warnings` passes: eBPF imports gated on the `ebpf` feature, `Coalescer::is_empty`,
