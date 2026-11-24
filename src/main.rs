@@ -148,13 +148,20 @@ async fn main() -> Result<()> {
         timeout: Duration::from_secs(config.hooks.timeout_sec),
     };
     system::sandbox::set_global(config.hooks.sandbox.clone());
-    let (hook_tx, hook_service) = hooks::spawn_service(
+    let event_log = Arc::new(build_event_log(&config.hooks));
+    hooks::journal::set_global(event_log.clone());
+    let (hook_tx, hook_service) = hooks::spawn_service_with_log(
         hook_opts.clone(),
         Duration::from_millis(config.hooks.debounce_ms),
         metrics.clone(),
         config.hooks.rate_limit.clone(),
         config.hooks.max_pending,
+        Some(event_log),
     );
+    if config.hooks.startup_triggers {
+        let st = state.read().await;
+        network::startup::fire_startup_triggers(&handle, &st, &hook_selector, &hook_tx).await;
+    }
     ebpf::spawn(config.clone(), state.clone(), hook_opts.clone());
 
     // Clone handles for async tasks
@@ -223,6 +230,27 @@ async fn main() -> Result<()> {
 
     info!("netevd shutdown complete");
     Ok(())
+}
+
+/// In-memory event history, plus the JSONL journal when `journal_path` is set
+/// (a journal that cannot be opened is logged and skipped, never fatal).
+fn build_event_log(cfg: &config::HooksConfig) -> hooks::EventLog {
+    let log = hooks::EventLog::new(cfg.history_size);
+    let Some(path) = &cfg.journal_path else {
+        return log;
+    };
+    match hooks::EventLog::new(cfg.history_size)
+        .with_journal_file(PathBuf::from(path), cfg.journal_max_bytes)
+    {
+        Ok(l) => {
+            info!("Event journal: {}", path);
+            l
+        }
+        Err(e) => {
+            warn!("Event journal disabled, cannot open {}: {}", path, e);
+            log
+        }
+    }
 }
 
 /// Run the REST API server if enabled. Failures are logged and never stop the

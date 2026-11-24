@@ -237,7 +237,9 @@ Same port as Prometheus (default `9090`):
 ```bash
 curl -s localhost:9090/api/v1/status
 curl -s localhost:9090/api/v1/interfaces
-curl -s localhost:9090/api/v1/events
+curl -s 'localhost:9090/api/v1/events?interface=eth0&limit=20'
+curl -N localhost:9090/api/v1/events/stream   # live, Server-Sent Events
+netevd events --follow                        # same stream from the CLI
 curl -s localhost:9090/metrics
 curl -s localhost:9090/health
 ```

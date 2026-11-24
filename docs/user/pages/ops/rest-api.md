@@ -87,7 +87,8 @@ netevd events --tail 20 -f json
 | GET | `/api/v1/interfaces/{name}` | One interface |
 | GET | `/api/v1/routes` | Routing table |
 | GET | `/api/v1/rules` | Policy rules |
-| GET | `/api/v1/events` | Event history |
+| GET | `/api/v1/events` | Dispatched-event history. Query: `interface`, `event`, `since` (sequence cursor), `limit` (1-1000, default 100) |
+| GET | `/api/v1/events/stream` | Server-Sent Events, one event per message (`id` = sequence). Same `interface` / `event` filters; live only, resume with `since` on `/api/v1/events` |
 | POST | `/api/v1/reload` | Config reload request |
 
 ## Related pages

@@ -7,11 +7,13 @@ pub mod debounce;
 pub mod dispatch;
 pub mod event;
 pub mod explain;
+pub mod journal;
 pub mod match_iface;
 pub mod ratelimit;
 pub mod service;
 
 pub use dispatch::HookDispatchOpts;
 pub use event::HookEventV1;
+pub use journal::EventLog;
 pub use match_iface::InterfaceSelector;
-pub use service::spawn as spawn_service;
+pub use service::spawn_with_log as spawn_service_with_log;

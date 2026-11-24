@@ -8,6 +8,7 @@ pub mod ipv6;
 pub mod link;
 pub mod route;
 pub mod routing_rule;
+pub mod startup;
 pub mod watcher;
 
 use std::collections::HashMap;

@@ -79,6 +79,31 @@ pub struct HooksConfig {
     /// Cap on distinct (link, event) keys waiting in the debouncer.
     #[serde(default = "default_max_pending")]
     pub max_pending: usize,
+
+    /// Dispatched events kept in memory for `/api/v1/events` and the stream.
+    #[serde(default = "default_history_size")]
+    pub history_size: usize,
+
+    /// Append every dispatched event to this JSONL file (off when unset).
+    #[serde(default)]
+    pub journal_path: Option<String>,
+
+    /// Rotate the journal to `<path>.1` beyond this size (0 = never).
+    #[serde(default = "default_journal_max_bytes")]
+    pub journal_max_bytes: u64,
+
+    /// At start, fire `link-added` / `address-added` hooks for what already
+    /// exists (like networkd-dispatcher `--run-startup-triggers`).
+    #[serde(default)]
+    pub startup_triggers: bool,
+}
+
+fn default_history_size() -> usize {
+    crate::hooks::journal::DEFAULT_HISTORY
+}
+
+fn default_journal_max_bytes() -> u64 {
+    crate::hooks::journal::DEFAULT_JOURNAL_MAX_BYTES
 }
 
 fn default_max_pending() -> usize {
@@ -159,6 +184,10 @@ impl Default for HooksConfig {
             sandbox: SandboxConfig::default(),
             rate_limit: RateLimitConfig::default(),
             max_pending: default_max_pending(),
+            history_size: default_history_size(),
+            journal_path: None,
+            journal_max_bytes: default_journal_max_bytes(),
+            startup_triggers: false,
         }
     }
 }

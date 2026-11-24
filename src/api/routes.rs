@@ -2,12 +2,18 @@
 // SPDX-License-Identifier: LicenseRef-Zyvor-Production-2.0
 
 use crate::api::handlers::*;
+use crate::hooks::journal::EventLog;
 use axum::{
     routing::{get, post},
-    Router,
+    Extension, Router,
 };
+use std::sync::Arc;
 
 pub fn create_api_routes(state: AppState) -> Router {
+    create_api_routes_with_log(state, crate::hooks::journal::global())
+}
+
+pub fn create_api_routes_with_log(state: AppState, log: Arc<EventLog>) -> Router {
     Router::new()
         // API v1 routes
         .route("/api/v1/status", get(get_status))
@@ -16,9 +22,11 @@ pub fn create_api_routes(state: AppState) -> Router {
         .route("/api/v1/routes", get(list_routes))
         .route("/api/v1/rules", get(list_rules))
         .route("/api/v1/events", get(list_events))
+        .route("/api/v1/events/stream", get(stream_events))
         .route("/api/v1/reload", post(reload_config))
         // Health and metrics
         .route("/health", get(health_check))
         .route("/metrics", get(metrics))
+        .layer(Extension(log))
         .with_state(state)
 }
