@@ -1,0 +1,25 @@
+name: lychee-debug
+on:
+  pull_request:
+    paths: [".github/workflows/lychee-debug.yml"]
+jobs:
+  dbg:
+    runs-on: ["self-hosted", "Linux", "ARM64", "fluxvm"]
+    steps:
+      - name: Diagnose
+        run: |
+          set +e
+          echo "whoami=$(whoami) uname=$(uname -m) RUNNER_TEMP=$RUNNER_TEMP"
+          mount | grep -E ' /opt| / ' 
+          d="$RUNNER_TEMP/dbg"; mkdir -p "$d"; cd "$d"
+          curl -sfLO https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.2/lychee-aarch64-unknown-linux-gnu.tar.gz && tar xzf lychee-*.tar.gz
+          ls -l lychee-aarch64-unknown-linux-gnu/lychee; file lychee-aarch64-unknown-linux-gnu/lychee 2>/dev/null
+          install -t "$RUNNER_TEMP/lychee/bin" -D lychee-aarch64-unknown-linux-gnu/lychee
+          ls -l "$RUNNER_TEMP/lychee/bin"
+          "$RUNNER_TEMP/lychee/bin/lychee" --version; echo "direct rc=$?"
+          echo "$RUNNER_TEMP/lychee/bin" >> "$GITHUB_PATH"
+      - name: After PATH
+        run: |
+          set +e
+          echo "$PATH" | tr ':' '\n' | head -n 8
+          which lychee; lychee --version; echo "rc=$?"
