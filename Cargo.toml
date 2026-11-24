@@ -2,9 +2,10 @@
 name = "netevd"
 version = "0.4.1"
 edition = "2021"
-# Floor set by notify-types 2.3 (1.91); zbus 6.5 needs 1.89. Keep in
-# sync with the `msrv` job in .github/workflows/cross-platform.yml.
-rust-version = "1.91"
+# Floor set by aya 0.16 / aya-obj 0.6 (1.98, optional `ebpf` feature);
+# notify-types 2.3 needs 1.91, zbus 6.5 needs 1.89. Keep in sync with the
+# `msrv` job in .github/workflows/cross-platform.yml.
+rust-version = "1.98"
 authors = ["ZyvorAI Labs Private Limited <info@zyvor.dev>"]
 license = "LicenseRef-Zyvor-Production-2.0"
 description = "High-performance network event daemon for systemd-networkd, NetworkManager, and dhclient with routing policy rules and script execution"
