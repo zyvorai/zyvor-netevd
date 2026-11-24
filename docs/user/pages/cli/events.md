@@ -69,3 +69,14 @@ journalctl -u netevd -f
 - [Hook: routable](../hooks/routable.md)
 - [REST API](../ops/rest-api.md)
 - [Common workflows](../../workflows.md)
+
+## Journal and replay
+
+Set `hooks.journal_path` to keep every dispatched event in a JSONL file (mode 0600, rotated once to `<path>.1`). Each line is a
+`netevd.event.v1` object plus `seq`, `outcome` (`dispatched`, `failed`, `rate-limited`), `duration_ms` and `error`:
+
+```bash
+netevd explain --from-file /var/lib/netevd/events.jsonl
+```
+
+`hooks.startup_triggers: true` additionally fires `link-added` and `address-added` hooks for links that already exist when the daemon starts.

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-Zyvor-Production-2.0
 
 pub mod handler;
+pub mod http;
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;

@@ -140,6 +140,10 @@ const KNOWN: &[&str] = &[
     "hooks.timeout_sec",
     "hooks.max_parallel",
     "hooks.max_pending",
+    "hooks.history_size",
+    "hooks.journal_path",
+    "hooks.journal_max_bytes",
+    "hooks.startup_triggers",
     "hooks.sandbox",
     "hooks.sandbox.workdir",
     "hooks.sandbox.pass_env",
@@ -627,6 +631,41 @@ pub fn check_yaml(text: &str) -> Report {
             "max_pending must be at least 1",
         );
     }
+    if h.history_size == 0 {
+        r.push(
+            Level::Error,
+            at("hooks.history_size"),
+            Some("hooks.history_size"),
+            "history_size must be at least 1",
+        );
+    } else if h.history_size > 100_000 {
+        r.push(
+            Level::Warning,
+            at("hooks.history_size"),
+            Some("hooks.history_size"),
+            format!(
+                "history_size {} keeps that many events in memory",
+                h.history_size
+            ),
+        );
+    }
+    if let Some(p) = &h.journal_path {
+        if !p.starts_with('/') {
+            r.push(
+                Level::Error,
+                at("hooks.journal_path"),
+                Some("hooks.journal_path"),
+                "journal_path must be an absolute path",
+            );
+        } else if p.ends_with('/') || p.split('/').any(|c| c == "..") {
+            r.push(
+                Level::Error,
+                at("hooks.journal_path"),
+                Some("hooks.journal_path"),
+                "journal_path must name a file and not contain '..'",
+            );
+        }
+    }
     for msg in h.sandbox.problems() {
         r.push(
             Level::Error,
@@ -810,6 +849,16 @@ mod tests {
         assert_eq!(r.errors(), 0);
         assert!(!r.ok(true));
         assert!(r.ok(false));
+    }
+
+    #[test]
+    fn journal_settings_are_validated() {
+        let r = check_yaml("hooks:\n  journal_path: events.jsonl\n  history_size: 0\n");
+        assert_eq!(r.errors(), 2);
+        let r = check_yaml(
+            "hooks:\n  journal_path: /var/log/netevd/events.jsonl\n  history_size: 50\n  startup_triggers: true\n",
+        );
+        assert!(r.ok(true), "{:?}", r.diagnostics);
     }
 
     #[test]

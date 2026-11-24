@@ -37,6 +37,10 @@ hooks:
     rlimit_as_mb: 0
     rlimit_fsize_mb: 0
     no_core_dumps: true
+  history_size: 1000   # dispatched events kept for /api/v1/events and the stream
+  # journal_path: /var/lib/netevd/events.jsonl   # append every dispatched event (0600), explain --from-file replays it
+  journal_max_bytes: 10485760   # rotate to <path>.1 beyond this (0 = never)
+  startup_triggers: false       # fire link-added / address-added hooks for existing links at start
   rate_limit:          # per (link, event); burst 0 = off
     burst: 0
     per_minute: 30

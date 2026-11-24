@@ -22,6 +22,20 @@
 
 ### Added
 
+- Event journal: every dispatched hook event (outcome `dispatched`, `failed` or `rate-limited`, duration, error) is kept in a bounded
+  in-memory history (`hooks.history_size`, default 1000) and optionally appended to a 0600 JSONL file (`hooks.journal_path`,
+  rotated once to `<path>.1` beyond `hooks.journal_max_bytes`). Journal lines are `netevd.event.v1` plus `seq`, `outcome`,
+  `duration_ms`, `error`, so `netevd explain --from-file` replays them unchanged.
+- REST: `GET /api/v1/events` now returns real history (it was an empty stub) with `interface`, `event`, `since`, `limit` filters;
+  new `GET /api/v1/events/stream` (Server-Sent Events). `/api/v1/status` reports real `uptime_seconds` and `events_processed`.
+- CLI: `netevd status`, `list interfaces|routes|rules`, `show interface`, `events` (tail, filters, `--follow` over SSE) and `reload`
+  now talk to the API through a small built-in HTTP client. Before, they printed fabricated placeholder data (status always showed
+  "3600 seconds, 150 events") or nothing. `list scripts` now says it is not served by the API and points at `netevd explain`.
+- `hooks.startup_triggers` (off by default): at start, fire `link-added` and `address-added` hooks for existing links that pass the
+  interface selector, like networkd-dispatcher `--run-startup-triggers` and networkd-broker `--startup-triggers`.
+- Config check knows the new `hooks.*` keys and rejects `history_size: 0` and a relative or `..` `journal_path`.
+- Dependencies: `notify` 8.2 -> 9.0 (no source changes; it pulls `xxhash-rust`, BSL-1.0, now allowed in deny.toml), `hyper` 1.12 -> 1.13.
+
 - `netevd check-config` (alias `validate`): line-numbered diagnostics. Reports YAML errors with line, unknown keys (serde silently
   ignored them) with a suggestion, and invalid or risky values (backend, interface names and patterns, ports, TLS, timeouts,
   sandbox and rate-limit settings, filter script names containing `/` or `..`, world-writable config). `--strict` fails on warnings,
