@@ -14,3 +14,7 @@ OFO = "OFO"
 # src/system/validation.rs — deliberately contains a shell metacharacter to
 # verify sanitize_env_value() rejects it, not a typo of "use"/"due".
 ue = "ue"
+# Deliberately misspelt config key "timout_sec" used as the example typo in
+# the config validator (src/config/check.rs), its test fixture, and the docs
+# that show its "did you mean 'timeout_sec'?" warning.
+timout = "timout"
