@@ -127,6 +127,9 @@ const KNOWN: &[&str] = &[
     "api.tls.enabled",
     "api.tls.cert_file",
     "api.tls.key_file",
+    "api.auth",
+    "api.auth.token_file",
+    "api.auth.public_metrics",
     "metrics",
     "metrics.enabled",
     "metrics.port",
@@ -509,13 +512,48 @@ pub fn check_yaml(text: &str) -> Report {
                 cfg.api.bind_address
             ),
         ),
-        Ok(ip) if cfg.api.enabled && !ip.is_loopback() && !cfg.api.tls.enabled => r.push(
-            Level::Warning,
-            at("api.bind_address"),
-            Some("api.bind_address"),
-            format!("API listens on non-loopback {ip} without TLS"),
-        ),
+        Ok(ip) if cfg.api.enabled && !ip.is_loopback() => {
+            if !cfg.api.tls.enabled {
+                r.push(
+                    Level::Warning,
+                    at("api.bind_address"),
+                    Some("api.bind_address"),
+                    format!("API listens on non-loopback {ip} without TLS"),
+                );
+            }
+            if cfg.api.auth.token_file.is_none() {
+                r.push(
+                    Level::Warning,
+                    at("api.bind_address"),
+                    Some("api.bind_address"),
+                    format!(
+                        "API listens on non-loopback {ip} without authentication (set api.auth.token_file)"
+                    ),
+                );
+            }
+        }
         Ok(_) => {}
+    }
+    match cfg.api.auth.token_file.as_deref() {
+        Some("") => r.push(
+            Level::Error,
+            at("api.auth.token_file"),
+            Some("api.auth.token_file"),
+            "api.auth.token_file is empty; the API will not start",
+        ),
+        Some(p) if !p.starts_with('/') => r.push(
+            Level::Warning,
+            at("api.auth.token_file"),
+            Some("api.auth.token_file"),
+            format!("api.auth.token_file '{p}' is not an absolute path"),
+        ),
+        None if cfg.api.auth.public_metrics => r.push(
+            Level::Warning,
+            at("api.auth.public_metrics"),
+            Some("api.auth.public_metrics"),
+            "public_metrics has no effect without api.auth.token_file",
+        ),
+        _ => {}
     }
     if cfg.api.port == 0 {
         r.push(
@@ -859,6 +897,49 @@ mod tests {
             "hooks:\n  journal_path: /var/log/netevd/events.jsonl\n  history_size: 50\n  startup_triggers: true\n",
         );
         assert!(r.ok(true), "{:?}", r.diagnostics);
+    }
+
+    #[test]
+    fn api_auth_settings_are_validated() {
+        let r = check_yaml(
+            "api:\n  bind_address: 0.0.0.0\n  tls:\n    enabled: true\n    cert_file: /c\n    key_file: /k\n  auth:\n    token_file: /etc/netevd/api.token\n    public_metrics: true\n",
+        );
+        assert_eq!((r.errors(), r.warnings()), (0, 0), "{}", r.render_text("f"));
+        let r = check_yaml("api:\n  bind_address: 0.0.0.0\n");
+        assert_eq!(r.warnings(), 2, "{}", r.render_text("f"));
+        assert_eq!(
+            check_yaml("api:\n  auth:\n    token_file: \"\"\n").errors(),
+            1
+        );
+        assert_eq!(
+            check_yaml("api:\n  auth:\n    token_file: rel\n").warnings(),
+            1
+        );
+        assert_eq!(
+            check_yaml("api:\n  auth:\n    public_metrics: true\n").warnings(),
+            1
+        );
+        let r = check_yaml("api:\n  auth:\n    token_fil: /t\n");
+        assert!(
+            r.render_text("f").contains("token_file"),
+            "{}",
+            r.render_text("f")
+        );
+    }
+
+    #[test]
+    fn shipped_kubernetes_config_has_no_unknown_keys() {
+        let map = include_str!("../../kubernetes/configmap.yaml");
+        let mut checked = 0;
+        for doc in serde_yaml::Deserializer::from_str(map) {
+            let doc = <serde_yaml::Value as serde::Deserialize>::deserialize(doc).unwrap();
+            if let Some(text) = doc["data"]["netevd.yaml"].as_str() {
+                let r = check_yaml(text);
+                assert_eq!((r.errors(), r.warnings()), (0, 0), "{}", r.render_text("f"));
+                checked += 1;
+            }
+        }
+        assert_eq!(checked, 1);
     }
 
     #[test]

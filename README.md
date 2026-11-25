@@ -241,7 +241,36 @@ curl -s 'localhost:9090/api/v1/events?interface=eth0&limit=20'
 curl -N localhost:9090/api/v1/events/stream   # live, Server-Sent Events
 netevd events --follow                        # same stream from the CLI
 curl -s localhost:9090/metrics
-curl -s localhost:9090/health
+curl -s localhost:9090/health               # liveness, always 200
+curl -s localhost:9090/health/ready         # 503 while a check fails
+netevd health                               # same, as an exit status
+```
+
+### Authentication and TLS
+
+By default the API listens on loopback only, without authentication. To require a token and serve HTTPS:
+
+```yaml
+api:
+  bind_address: "0.0.0.0"
+  tls:  { enabled: true, cert_file: /etc/netevd/tls.crt, key_file: /etc/netevd/tls.key }
+  auth: { token_file: /etc/netevd/api.token }   # e.g. openssl rand -hex 32; root:netevd 0640
+```
+
+```bash
+netevd status --endpoint https://router1:9090 --ca-file ca.pem --token-file ~/.netevd.token
+curl --cacert ca.pem -H "Authorization: Bearer $(cat ~/.netevd.token)" https://router1:9090/api/v1/status
+```
+
+The CLI also reads `NETEVD_ENDPOINT`, `NETEVD_API_TOKEN_FILE`, `NETEVD_API_TOKEN` and `NETEVD_API_CA_FILE`, and refuses to
+send a token over plain HTTP to another host. Details: [docs/hardening.md](docs/hardening.md).
+
+### Testing hooks
+
+```bash
+netevd explain routable -l eth0                        # what would run (nothing executed)
+sudo -u netevd netevd trigger routable -l eth0         # run it now, with output and exit status
+netevd events --outcome failed                         # dispatches where a script failed
 ```
 
 ## Development

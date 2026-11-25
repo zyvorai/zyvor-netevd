@@ -9,7 +9,7 @@ hero:
     - {value: "<100ms", label: "netlink event latency"}
     - {value: "eBPF", label: "observe-only drops / TCP"}
     - {value: "1000+", label: "events / sec", footnote: "2"}
-    - {value: "9", label: "REST API endpoints", footnote: "3"}
+    - {value: "11", label: "REST API endpoints", footnote: "3"}
   hub_bands:
     - {icon: "❓", title: "FAQ", description: "Licensing, support, production readiness, and platform questions.", href: FAQ.md}
     - {icon: "🏢", title: "Enterprise license", description: "What the license includes.", href: enterprise.md}
@@ -21,7 +21,7 @@ hero:
 footnotes:
   - {marker: "1", text: "17 hook directories span carrier/link, address, route, MTU, manager state, and observe-only eBPF (drops / tcp-retransmit / tcp-reset).", href: hooks-contract.md, href_label: "See the Hook Contract."}
   - {marker: "2", text: "1000+ events/sec sustained throughput, per the README's Performance table.", href: "https://github.com/zyvorai/netevd#performance", href_label: "See Performance in the README."}
-  - {marker: "3", text: "9 REST endpoints for status, interfaces, routes, events, and metrics.", href: "https://github.com/zyvorai/netevd#rest-api", href_label: "See REST API in the README."}
+  - {marker: "3", text: "11 REST endpoints for status, interfaces, routes, events, health and metrics.", href: "https://github.com/zyvorai/netevd#rest-api", href_label: "See REST API in the README."}
 ---
 
 **netevd** runs your scripts the moment something changes on a Linux network interface — link up/down, a new IP, a route change — instead of you writing an ad-hoc dispatcher script, a systemd-networkd `ExecStartPost` hack, or a cron job that polls `ip addr` every few seconds. It bridges **systemd-networkd**, **NetworkManager**, and **dhclient** into one event system, with sub-100ms netlink-driven latency, **opt-in eBPF observation** for silent packet drops and TCP health, automatic policy routing for multi-homed hosts, a REST API, Prometheus metrics, and a defense-in-depth security model.

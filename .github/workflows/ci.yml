@@ -42,8 +42,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libdbus-1-dev pkg-config
 
+      # Full debuginfo made the linker run out of memory on the self-hosted
+      # runner (`ld terminated with signal 9`); link fewer, smaller binaries.
       - name: Run tests
         run: cargo test --verbose
+        env:
+          CARGO_BUILD_JOBS: "2"
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          CARGO_PROFILE_TEST_DEBUG: "0"
 
   clippy:
     name: Clippy

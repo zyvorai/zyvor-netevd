@@ -8,12 +8,13 @@
 //! validated and sanitized before being passed to scripts.
 
 use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tracing::{debug, info, warn};
@@ -24,6 +25,75 @@ const SCRIPT_TIMEOUT: Duration = Duration::from_secs(30);
 /// How long to wait for output readers after the script exits (a daemonized
 /// grandchild may keep the pipe open).
 const OUTPUT_GRACE: Duration = Duration::from_millis(200);
+
+/// How one script run ended.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ScriptStatus {
+    Ok,
+    /// Non-zero exit or killed by a signal.
+    Failed,
+    /// Killed after exceeding the per-script timeout.
+    Timeout,
+    /// Could not be started at all.
+    SpawnError,
+}
+
+/// Outcome of one script. This is what the event journal and API keep; script
+/// output is deliberately not part of it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ScriptResult {
+    pub name: String,
+    pub status: ScriptStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exit_code: Option<i32>,
+    pub duration_ms: u64,
+}
+
+impl ScriptResult {
+    /// Short text such as `a.sh (exit 1)`.
+    pub fn describe(&self) -> String {
+        let how = match (self.status, self.exit_code) {
+            (ScriptStatus::Ok, _) => "ok".to_string(),
+            (ScriptStatus::Failed, Some(c)) => format!("exit {c}"),
+            (ScriptStatus::Failed, None) => "killed by signal".to_string(),
+            (ScriptStatus::Timeout, _) => "timeout".to_string(),
+            (ScriptStatus::SpawnError, _) => "cannot start".to_string(),
+        };
+        format!("{} ({how})", self.name)
+    }
+}
+
+/// A script result plus its captured (size-capped) output.
+#[derive(Debug, Clone, Serialize)]
+pub struct ScriptRun {
+    #[serde(flatten)]
+    pub result: ScriptResult,
+    pub stdout: String,
+    pub stderr: String,
+    /// Why the run failed, for logs and `netevd trigger`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// `None` when every script succeeded, else one line naming the failures.
+pub fn failure_summary(runs: &[ScriptRun]) -> Option<String> {
+    let bad: Vec<String> = runs
+        .iter()
+        .filter(|r| r.result.status != ScriptStatus::Ok)
+        .map(|r| r.result.describe())
+        .collect();
+    if bad.is_empty() {
+        None
+    } else {
+        Some(format!(
+            "{} of {} scripts failed: {}",
+            bad.len(),
+            runs.len(),
+            bad.join(", ")
+        ))
+    }
+}
 
 /// One file found in a hook directory and what would happen to it.
 #[derive(Debug, Clone, PartialEq)]
@@ -91,21 +161,35 @@ pub async fn execute_scripts(directory: &str, env_vars: HashMap<String, String>)
 }
 
 /// Execute all scripts in a directory under an explicit sandbox profile.
+/// A failing script is logged and does not stop the others.
 pub async fn execute_scripts_with(
     directory: &str,
     env_vars: HashMap<String, String>,
     timeout: Duration,
     cfg: &SandboxConfig,
 ) -> Result<()> {
+    run_scripts(directory, env_vars, timeout, cfg)
+        .await
+        .map(|_| ())
+}
+
+/// Like [`execute_scripts_with`], returning one [`ScriptRun`] per script run,
+/// in execution order. `Err` means the directory itself could not be read.
+pub async fn run_scripts(
+    directory: &str,
+    env_vars: HashMap<String, String>,
+    timeout: Duration,
+    cfg: &SandboxConfig,
+) -> Result<Vec<ScriptRun>> {
     let dir_path = Path::new(directory);
 
     if !dir_path.exists() {
         debug!("Script directory does not exist: {}", directory);
-        return Ok(());
+        return Ok(Vec::new());
     }
     if !dir_path.is_dir() {
         warn!("Script path is not a directory: {}", directory);
-        return Ok(());
+        return Ok(Vec::new());
     }
 
     let uid = nix::unistd::Uid::effective().as_raw();
@@ -121,18 +205,35 @@ pub async fn execute_scripts_with(
     }
     if scripts.is_empty() {
         debug!("No executable scripts found in: {}", directory);
-        return Ok(());
+        return Ok(Vec::new());
     }
 
     info!("Executing {} scripts in: {}", scripts.len(), directory);
 
+    let event_type = env_vars
+        .get("EVENT")
+        .or_else(|| env_vars.get("STATE"))
+        .cloned()
+        .unwrap_or_else(|| {
+            dir_path
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        });
+
+    let mut runs = Vec::with_capacity(scripts.len());
     for script_path in scripts {
-        match execute_script(&script_path, &env_vars, timeout, cfg).await {
-            Ok(_) => info!("Successfully executed script: {:?}", script_path),
-            Err(e) => warn!("Failed to execute script {:?}: {}", script_path, e),
+        let run = execute_script(&script_path, &env_vars, timeout, cfg).await;
+        match &run.error {
+            None => info!("Successfully executed script: {:?}", script_path),
+            Some(e) => warn!("Failed to execute script {:?}: {}", script_path, e),
         }
+        if let Some(m) = crate::metrics::get_global_metrics() {
+            m.observe_script(&run.result, &event_type);
+        }
+        runs.push(run);
     }
-    Ok(())
+    Ok(runs)
 }
 
 /// Read a pipe to the end, keeping at most `cap` bytes.
@@ -175,7 +276,23 @@ async fn execute_script(
     env_vars: &HashMap<String, String>,
     timeout: Duration,
     cfg: &SandboxConfig,
-) -> Result<()> {
+) -> ScriptRun {
+    let name = script_path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let started = Instant::now();
+    let finish = |status, exit_code, stdout, stderr, error| ScriptRun {
+        result: ScriptResult {
+            name: name.clone(),
+            status,
+            exit_code,
+            duration_ms: started.elapsed().as_millis() as u64,
+        },
+        stdout,
+        stderr,
+        error,
+    };
     debug!("Executing script: {:?}", script_path);
 
     let prepared = sandbox::prepare_env(env_vars, cfg, &|k| std::env::var(k).ok());
@@ -210,54 +327,91 @@ async fn execute_script(
         cmd.pre_exec(move || sandbox::apply_in_child(&child_cfg));
     }
 
-    let mut child = cmd
-        .spawn()
-        .with_context(|| format!("Failed to spawn script: {:?}", script_path))?;
+    // "Text file busy" is transient: the script is being written or replaced.
+    let mut busy_retries = 10;
+    let spawned = loop {
+        match cmd.spawn() {
+            Err(e) if e.raw_os_error() == Some(libc::ETXTBSY) && busy_retries > 0 => {
+                busy_retries -= 1;
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+            other => break other,
+        }
+    };
+    let mut child = match spawned {
+        Ok(c) => c,
+        Err(e) => {
+            return finish(
+                ScriptStatus::SpawnError,
+                None,
+                String::new(),
+                String::new(),
+                Some(format!("Failed to spawn script: {e}")),
+            )
+        }
+    };
     let pid = child.id();
     let (out_sink, out_task) = spawn_reader(child.stdout.take(), cfg.max_output_bytes);
     let (err_sink, err_task) = spawn_reader(child.stderr.take(), cfg.max_output_bytes);
 
-    let status = match tokio::time::timeout(timeout, child.wait()).await {
-        Ok(r) => r.with_context(|| format!("Failed to execute script: {:?}", script_path))?,
-        Err(_) => {
-            if let Some(pid) = pid {
-                let _ = nix::sys::signal::killpg(
-                    nix::unistd::Pid::from_raw(pid as i32),
-                    nix::sys::signal::Signal::SIGKILL,
-                );
-            }
-            let _ = child.kill().await;
-            anyhow::bail!(
-                "Script {:?} timed out after {}s (process group killed)",
-                script_path,
-                timeout.as_secs()
+    let waited = tokio::time::timeout(timeout, child.wait()).await;
+    if !matches!(waited, Ok(Ok(_))) {
+        if let Some(pid) = pid {
+            let _ = nix::sys::signal::killpg(
+                nix::unistd::Pid::from_raw(pid as i32),
+                nix::sys::signal::Signal::SIGKILL,
             );
         }
-    };
+        let _ = child.kill().await;
+    }
 
     for t in [out_task, err_task].into_iter().flatten() {
         // A grandchild may still hold the pipe; keep what we have.
         let _ = tokio::time::timeout(OUTPUT_GRACE, t).await;
     }
-    let stdout = out_sink.lock().unwrap().clone();
-    let stderr = err_sink.lock().unwrap().clone();
+    let stdout = String::from_utf8_lossy(&out_sink.lock().unwrap()).into_owned();
+    let stderr = String::from_utf8_lossy(&err_sink.lock().unwrap()).into_owned();
 
     if !stdout.is_empty() {
-        debug!("Script stdout: {}", String::from_utf8_lossy(&stdout).trim());
+        debug!("Script stdout: {}", stdout.trim());
     }
     if !stderr.is_empty() {
-        let stderr = String::from_utf8_lossy(&stderr);
-        if status.success() {
+        if matches!(&waited, Ok(Ok(s)) if s.success()) {
             debug!("Script stderr: {}", stderr.trim());
         } else {
             warn!("Script stderr: {}", stderr.trim());
         }
     }
 
-    if !status.success() {
-        anyhow::bail!("Script {:?} exited with status: {}", script_path, status);
+    match waited {
+        Ok(Ok(status)) if status.success() => {
+            finish(ScriptStatus::Ok, status.code(), stdout, stderr, None)
+        }
+        Ok(Ok(status)) => finish(
+            ScriptStatus::Failed,
+            status.code(),
+            stdout,
+            stderr,
+            Some(format!("exited with status: {status}")),
+        ),
+        Ok(Err(e)) => finish(
+            ScriptStatus::Failed,
+            None,
+            stdout,
+            stderr,
+            Some(format!("failed to wait for script: {e}")),
+        ),
+        Err(_) => finish(
+            ScriptStatus::Timeout,
+            None,
+            stdout,
+            stderr,
+            Some(format!(
+                "timed out after {}s (process group killed)",
+                timeout.as_secs()
+            )),
+        ),
     }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -388,7 +542,7 @@ mod tests {
         execute_scripts_with(
             hooks.to_str().unwrap(),
             env(&[]),
-            Duration::from_millis(600),
+            Duration::from_secs(2),
             &SandboxConfig::default(),
         )
         .await
@@ -398,9 +552,78 @@ mod tests {
             .trim()
             .parse()
             .unwrap();
-        tokio::time::sleep(Duration::from_millis(300)).await;
-        let alive = nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid), None).is_ok();
+        let mut alive = true;
+        for _ in 0..50 {
+            alive = process_running(pid);
+            if !alive {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
         assert!(!alive, "grandchild survived the timeout");
+    }
+
+    /// True while `pid` is alive. A killed but not yet reaped process (zombie)
+    /// is dead: in a container without a reaping init the orphaned grandchild
+    /// stays a zombie, and `kill(pid, 0)` still succeeds on it.
+    fn process_running(pid: i32) -> bool {
+        match std::fs::read_to_string(format!("/proc/{pid}/stat")) {
+            // Format: `pid (comm) state ...`; comm may contain spaces.
+            Ok(stat) => !matches!(
+                stat.rsplit_once(") ").and_then(|(_, r)| r.chars().next()),
+                Some('Z' | 'X')
+            ),
+            Err(_) => false,
+        }
+    }
+
+    #[tokio::test]
+    async fn run_reports_each_script_outcome_and_output() {
+        let t = tempfile::tempdir().unwrap();
+        let hooks = t.path().join("h.d");
+        std::fs::create_dir(&hooks).unwrap();
+        write_script(&hooks, "01-ok", "#!/bin/sh\necho hello\n", 0o755);
+        write_script(
+            &hooks,
+            "02-bad",
+            "#!/bin/sh\necho oops >&2\nexit 3\n",
+            0o755,
+        );
+        write_script(&hooks, "03-slow", "#!/bin/sh\nsleep 20\n", 0o755);
+        write_script(&hooks, "04-nointerp", "#!/nonexistent/interp\n", 0o755);
+        write_script(&hooks, "05-signal", "#!/bin/sh\nkill -TERM $$\n", 0o755);
+        let runs = run_scripts(
+            hooks.to_str().unwrap(),
+            env(&[]),
+            Duration::from_secs(3),
+            &SandboxConfig::default(),
+        )
+        .await
+        .unwrap();
+        let got: Vec<_> = runs
+            .iter()
+            .map(|r| (r.result.status, r.result.exit_code))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                (ScriptStatus::Ok, Some(0)),
+                (ScriptStatus::Failed, Some(3)),
+                (ScriptStatus::Timeout, None),
+                (ScriptStatus::SpawnError, None),
+                (ScriptStatus::Failed, None),
+            ]
+        );
+        assert_eq!(runs[0].stdout, "hello\n");
+        assert_eq!(runs[1].stderr, "oops\n");
+        assert!(runs[2].result.duration_ms >= 2900);
+        let summary = failure_summary(&runs).unwrap();
+        assert_eq!(
+            summary,
+            "4 of 5 scripts failed: 02-bad (exit 3), 03-slow (timeout), \
+             04-nointerp (cannot start), 05-signal (killed by signal)"
+        );
+        assert_eq!(failure_summary(&runs[..1]), None);
     }
 
     #[tokio::test]

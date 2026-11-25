@@ -66,8 +66,10 @@ spec:
           limits:
             cpu: 200m
             memory: 128Mi
+        # hostNetwork: the API listens on the node's loopback address.
         livenessProbe:
           httpGet:
+            host: 127.0.0.1
             path: /health
             port: 9090
           initialDelaySeconds: 10
@@ -76,7 +78,8 @@ spec:
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /health
+            host: 127.0.0.1
+            path: /health/ready
             port: 9090
           initialDelaySeconds: 5
           periodSeconds: 10

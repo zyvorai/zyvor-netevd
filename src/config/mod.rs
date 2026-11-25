@@ -278,6 +278,22 @@ pub struct ApiConfig {
 
     #[serde(default)]
     pub tls: TlsConfig,
+
+    #[serde(default)]
+    pub auth: ApiAuthConfig,
+}
+
+#[derive(Debug, Default, Deserialize, Clone)]
+#[serde(rename_all = "snake_case")]
+pub struct ApiAuthConfig {
+    /// File with accepted bearer tokens, one per line. Unset = no
+    /// authentication.
+    #[serde(default)]
+    pub token_file: Option<String>,
+
+    /// Let `/metrics` be scraped without a token.
+    #[serde(default)]
+    pub public_metrics: bool,
 }
 
 #[derive(Debug, Default, Deserialize, Clone)]
@@ -338,6 +354,7 @@ impl Default for ApiConfig {
             bind_address: "127.0.0.1".to_string(),
             port: 9090,
             tls: TlsConfig::default(),
+            auth: ApiAuthConfig::default(),
         }
     }
 }

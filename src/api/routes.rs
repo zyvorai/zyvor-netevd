@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-Zyvor-Production-2.0
 
 use crate::api::handlers::*;
+use crate::api::health::{health_check, readiness_check, HealthProbe};
 use crate::hooks::journal::EventLog;
 use axum::{
     routing::{get, post},
@@ -9,11 +10,38 @@ use axum::{
 };
 use std::sync::Arc;
 
+/// What the handlers report on besides the shared network state.
+#[derive(Clone)]
+pub struct ApiContext {
+    pub log: Arc<EventLog>,
+    pub probe: Arc<HealthProbe>,
+}
+
+impl Default for ApiContext {
+    fn default() -> Self {
+        Self {
+            log: crate::hooks::journal::global(),
+            probe: Arc::new(HealthProbe::default()),
+        }
+    }
+}
+
 pub fn create_api_routes(state: AppState) -> Router {
-    create_api_routes_with_log(state, crate::hooks::journal::global())
+    create_api_routes_with(state, ApiContext::default())
 }
 
 pub fn create_api_routes_with_log(state: AppState, log: Arc<EventLog>) -> Router {
+    create_api_routes_with(
+        state,
+        ApiContext {
+            log,
+            ..ApiContext::default()
+        },
+    )
+}
+
+/// All routes, without authentication (see `ApiServer::router`).
+pub fn create_api_routes_with(state: AppState, context: ApiContext) -> Router {
     Router::new()
         // API v1 routes
         .route("/api/v1/status", get(get_status))
@@ -26,7 +54,9 @@ pub fn create_api_routes_with_log(state: AppState, log: Arc<EventLog>) -> Router
         .route("/api/v1/reload", post(reload_config))
         // Health and metrics
         .route("/health", get(health_check))
+        .route("/health/ready", get(readiness_check))
         .route("/metrics", get(metrics))
-        .layer(Extension(log))
+        .layer(Extension(context.log))
+        .layer(Extension(context.probe))
         .with_state(state)
 }

@@ -8,7 +8,8 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use super::event::HookEventV1;
-use crate::system::execute::{execute_scripts, execute_scripts_with_timeout};
+use crate::system::execute::{run_scripts, ScriptRun};
+use crate::system::sandbox;
 use crate::system::validation::validate_state_name;
 
 #[derive(Debug, Clone)]
@@ -33,17 +34,23 @@ pub fn hook_dir(root: &Path, state: &str) -> Option<PathBuf> {
     Some(root.join(format!("{state}.d")))
 }
 
-pub async fn dispatch_event(event: &HookEventV1, opts: &HookDispatchOpts) -> Result<()> {
+/// Run the hook directory for `event` and report each script's outcome. An
+/// unknown hook state runs nothing.
+pub async fn dispatch_event(
+    event: &HookEventV1,
+    opts: &HookDispatchOpts,
+) -> Result<Vec<ScriptRun>> {
     let Some(dir) = hook_dir(&opts.config_root, &event.event) else {
         tracing::warn!(event = %event.event, "rejected unknown hook state");
-        return Ok(());
+        return Ok(Vec::new());
     };
-    let env = event.to_env();
-    if opts.timeout == Duration::from_secs(30) {
-        execute_scripts(&dir.to_string_lossy(), env).await
-    } else {
-        execute_scripts_with_timeout(&dir.to_string_lossy(), env, opts.timeout).await
-    }
+    run_scripts(
+        &dir.to_string_lossy(),
+        event.to_env(),
+        opts.timeout,
+        &sandbox::global(),
+    )
+    .await
 }
 
 #[cfg(test)]

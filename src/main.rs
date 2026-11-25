@@ -19,7 +19,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::RwLock;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 
 mod api;
@@ -103,6 +103,22 @@ async fn main() -> Result<()> {
         info!("Audit logging disabled");
     }
 
+    // Load API credentials before privileges are dropped (when started as
+    // root, the files may then be readable by root only). Broken settings
+    // disable the API rather than serving it unprotected.
+    let api_security = if config.api.enabled {
+        match api::security::ApiSecurity::load(&config.api) {
+            Ok(s) => Some(s),
+            Err(e) => {
+                error!("API server not started: {:#}", e);
+                None
+            }
+        }
+    } else {
+        info!("API server disabled");
+        None
+    };
+
     // Drop privileges if running as root
     if user::is_root() {
         info!(
@@ -156,8 +172,15 @@ async fn main() -> Result<()> {
         metrics.clone(),
         config.hooks.rate_limit.clone(),
         config.hooks.max_pending,
-        Some(event_log),
+        Some(event_log.clone()),
     );
+    let api_context = api::routes::ApiContext {
+        log: event_log,
+        probe: Arc::new(api::health::HealthProbe::for_daemon(
+            &config.system.backend,
+            hook_tx.clone(),
+        )),
+    };
     if config.hooks.startup_triggers {
         let st = state.read().await;
         network::startup::fire_startup_triggers(&handle, &st, &hook_selector, &hook_tx).await;
@@ -217,7 +240,7 @@ async fn main() -> Result<()> {
         result = spawn_listener(config_listener, handle_listener, state_listener, metrics_listener, audit_listener) => {
             Some(format!("Backend listener exited: {:?}", result))
         }
-        _ = run_api_server(api_config, state_api) => None,
+        _ = run_api_server(api_config, api_security, api_context, state_api) => None,
         result = hook_service => {
             Some(format!("Hook dispatch service exited: {:?}", result))
         }
@@ -253,21 +276,25 @@ fn build_event_log(cfg: &config::HooksConfig) -> hooks::EventLog {
     }
 }
 
-/// Run the REST API server if enabled. Failures are logged and never stop the
-/// daemon; when disabled or failed this future stays pending so it does not
-/// complete the main `select!`.
-async fn run_api_server(cfg: config::ApiConfig, state: Arc<RwLock<NetworkState>>) {
-    if cfg.enabled {
+/// Run the REST API server unless it is disabled (`security` is `None`).
+/// Failures are logged and never stop the daemon; the future then stays
+/// pending so it does not complete the main `select!`.
+async fn run_api_server(
+    cfg: config::ApiConfig,
+    security: Option<api::security::ApiSecurity>,
+    context: api::routes::ApiContext,
+    state: Arc<RwLock<NetworkState>>,
+) {
+    if let Some(security) = security {
         match api::ApiServer::with_bind_address(&cfg.bind_address, cfg.port, state) {
             Ok(server) => {
+                let server = server.with_security(security).with_context(context);
                 if let Err(e) = server.run().await {
                     warn!("API server exited: {:?}", e);
                 }
             }
             Err(e) => warn!("API server not started: {:?}", e),
         }
-    } else {
-        info!("API server disabled");
     }
     std::future::pending::<()>().await
 }

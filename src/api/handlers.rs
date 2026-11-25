@@ -1,8 +1,10 @@
 // Copyright 2026 Zyvor AI Labs · https://zyvor.dev
 // SPDX-License-Identifier: LicenseRef-Zyvor-Production-2.0
 
+use crate::api::health::HealthProbe;
 use crate::api::models::*;
 use crate::hooks::journal::{EventFilter, EventLog, JournalRecord};
+use crate::network::query::{self, RouteQuery};
 use crate::network::NetworkState;
 use axum::{
     extract::{Path, Query, State},
@@ -22,6 +24,7 @@ pub type AppState = Arc<RwLock<NetworkState>>;
 pub async fn get_status(
     State(state): State<AppState>,
     Extension(log): Extension<Arc<EventLog>>,
+    Extension(probe): Extension<Arc<HealthProbe>>,
 ) -> Json<ApiResponse<DaemonStatus>> {
     let state = state.read().await;
 
@@ -32,64 +35,53 @@ pub async fn get_status(
         interfaces_count: state.links_by_name.len(),
         routing_rules_count: state.routing_rules_from.len() + state.routing_rules_to.len(),
         events_processed: log.total(),
-        backend: "systemd-networkd".to_string(), // TODO: Get from config
-        dry_run: false,                          // TODO: Get from config
+        backend: probe.backend.clone().unwrap_or_else(|| "unknown".into()),
+        dry_run: false, // the daemon has no dry-run mode
     };
 
     Json(ApiResponse::success(status))
 }
 
-/// GET /api/v1/interfaces
-pub async fn list_interfaces(
-    State(state): State<AppState>,
-) -> Json<ApiResponse<Vec<InterfaceInfo>>> {
-    let state = state.read().await;
+type ApiError = (StatusCode, Json<ApiResponse<()>>);
 
-    let interfaces: Vec<InterfaceInfo> = state
-        .links_by_name
-        .iter()
-        .map(|(name, index)| InterfaceInfo {
-            name: name.clone(),
-            index: *index,
-            state: "up".to_string(), // TODO: Get actual state
-            addresses: vec![],       // TODO: Get addresses
-            mac_address: None,       // TODO: Get MAC
-            mtu: None,               // TODO: Get MTU
-            flags: vec![],           // TODO: Get flags
-        })
-        .collect();
+fn netlink_error(e: anyhow::Error) -> ApiError {
+    tracing::warn!("netlink query failed: {e:#}");
+    (
+        StatusCode::SERVICE_UNAVAILABLE,
+        Json(ApiResponse::error(format!("netlink query failed: {e:#}"))),
+    )
+}
 
-    Json(ApiResponse::success(interfaces))
+/// GET /api/v1/interfaces (read from the kernel on each request)
+pub async fn list_interfaces() -> Result<Json<ApiResponse<Vec<InterfaceInfo>>>, ApiError> {
+    let interfaces = query::interfaces().await.map_err(netlink_error)?;
+    Ok(Json(ApiResponse::success(interfaces)))
 }
 
 /// GET /api/v1/interfaces/:name
 pub async fn get_interface(
-    State(state): State<AppState>,
     Path(name): Path<String>,
-) -> Result<Json<ApiResponse<InterfaceInfo>>, StatusCode> {
-    let state = state.read().await;
-
-    let interface = state.links_by_name.get(&name).map(|index| InterfaceInfo {
-        name: name.clone(),
-        index: *index,
-        state: "up".to_string(),
-        addresses: vec![],
-        mac_address: None,
-        mtu: None,
-        flags: vec![],
-    });
-
+) -> Result<Json<ApiResponse<InterfaceInfo>>, ApiError> {
+    let interface = query::interfaces()
+        .await
+        .map_err(netlink_error)?
+        .into_iter()
+        .find(|i| i.name == name);
     match interface {
         Some(iface) => Ok(Json(ApiResponse::success(iface))),
-        None => Err(StatusCode::NOT_FOUND),
+        None => Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiResponse::error("no such interface".into())),
+        )),
     }
 }
 
-/// GET /api/v1/routes
-pub async fn list_routes(State(_state): State<AppState>) -> Json<ApiResponse<Vec<RouteInfo>>> {
-    // TODO: Implement route listing
-    let routes = vec![];
-    Json(ApiResponse::success(routes))
+/// GET /api/v1/routes[?table=N]
+pub async fn list_routes(
+    Query(q): Query<RouteQuery>,
+) -> Result<Json<ApiResponse<Vec<RouteInfo>>>, ApiError> {
+    let routes = query::routes(&q).await.map_err(netlink_error)?;
+    Ok(Json(ApiResponse::success(routes)))
 }
 
 /// GET /api/v1/rules
@@ -132,6 +124,8 @@ pub struct EventQuery {
     pub since: Option<u64>,
     /// Newest N events (default 100, max 1000).
     pub limit: Option<usize>,
+    /// `dispatched`, `failed` or `rate-limited`.
+    pub outcome: Option<String>,
 }
 
 impl EventQuery {
@@ -140,6 +134,7 @@ impl EventQuery {
             interface: self.interface.clone(),
             event: self.event.clone(),
             since: self.since,
+            outcome: self.outcome.clone(),
         }
     }
 }
@@ -212,20 +207,11 @@ pub async fn reload_config(
     })
 }
 
-/// GET /health
-pub async fn health_check() -> Json<HealthStatus> {
-    Json(HealthStatus {
-        status: "unknown".to_string(),
-        checks: HealthChecks {
-            dbus: false,
-            netlink: false,
-            config: false,
-        },
-    })
-}
-
 /// GET /metrics
-pub async fn metrics() -> String {
+pub async fn metrics(
+    State(state): State<AppState>,
+    Extension(log): Extension<Arc<EventLog>>,
+) -> String {
     let info_line = format!(
         "# HELP netevd_info netevd daemon information\n\
          # TYPE netevd_info gauge\n\
@@ -234,6 +220,18 @@ pub async fn metrics() -> String {
     );
 
     if let Some(handle) = crate::metrics::get_global_metrics() {
+        // Gauges are sampled when scraped.
+        {
+            let state = state.read().await;
+            handle
+                .interfaces_total
+                .set(state.links_by_name.len() as f64);
+            handle
+                .routing_rules_total
+                .set((state.routing_rules_from.len() + state.routing_rules_to.len()) as f64);
+            handle.routes_total.set(state.routes.len() as f64);
+        }
+        handle.uptime_seconds.set(log.uptime().as_secs() as f64);
         format!("{}{}", info_line, handle.gather())
     } else {
         info_line
@@ -306,6 +304,39 @@ mod tests {
             1,
             "limit is clamped to >= 1"
         );
+    }
+
+    #[tokio::test]
+    async fn events_filter_by_outcome() {
+        let log = log_with(3);
+        log.record(
+            &HookEventV1::new("mtu", "eth0", 2, "netlink"),
+            "failed",
+            Duration::ZERO,
+            Some("boom".into()),
+        );
+        let (_, v) = get(app(log), "/api/v1/events?outcome=failed").await;
+        assert_eq!(v["data"].as_array().unwrap().len(), 1);
+        assert_eq!(v["data"][0]["details"]["error"], "boom");
+    }
+
+    #[tokio::test]
+    async fn interfaces_and_routes_come_from_the_kernel() {
+        let (st, v) = get(app(log_with(0)), "/api/v1/interfaces/lo").await;
+        assert_eq!(st, StatusCode::OK);
+        assert_eq!(v["data"]["name"], "lo");
+        assert!(v["data"]["mtu"].as_u64().unwrap() > 0);
+        let (st, _) = get(app(log_with(0)), "/api/v1/interfaces/nope-xyz").await;
+        assert_eq!(st, StatusCode::NOT_FOUND);
+        let (st, v) = get(app(log_with(0)), "/api/v1/routes?table=255").await;
+        assert_eq!(st, StatusCode::OK);
+        assert!(v["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|r| r["table"] == 255));
+        let (st, _) = get(app(log_with(0)), "/api/v1/routes?table=x").await;
+        assert_eq!(st, StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]

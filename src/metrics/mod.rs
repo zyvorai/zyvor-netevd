@@ -4,6 +4,8 @@
 use prometheus::{Counter, CounterVec, Gauge, HistogramOpts, HistogramVec, Opts, Registry};
 use std::sync::Arc;
 
+use crate::system::execute::{ScriptResult, ScriptStatus};
+
 pub struct Metrics {
     pub registry: Registry,
 
@@ -240,6 +242,27 @@ impl Metrics {
         })
     }
 
+    /// Count one finished script run.
+    pub fn observe_script(&self, r: &ScriptResult, event_type: &str) {
+        self.script_executions_total
+            .with_label_values(&[r.name.as_str(), event_type])
+            .inc();
+        self.script_duration
+            .with_label_values(&[r.name.as_str()])
+            .observe(r.duration_ms as f64 / 1000.0);
+        if r.status != ScriptStatus::Ok {
+            let code = match (r.status, r.exit_code) {
+                (ScriptStatus::Timeout, _) => "timeout".to_string(),
+                (ScriptStatus::SpawnError, _) => "spawn-error".to_string(),
+                (_, Some(c)) => c.to_string(),
+                (_, None) => "signal".to_string(),
+            };
+            self.script_failures_total
+                .with_label_values(&[r.name.as_str(), code.as_str()])
+                .inc();
+        }
+    }
+
     pub fn gather(&self) -> String {
         use prometheus::Encoder;
         let encoder = prometheus::TextEncoder::new();
@@ -273,4 +296,32 @@ pub fn set_global_metrics(handle: MetricsHandle) {
 /// Get the global metrics handle (returns None if metrics are disabled)
 pub fn get_global_metrics() -> Option<&'static MetricsHandle> {
     GLOBAL_METRICS.get()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn script_runs_are_counted() {
+        let m = Metrics::new().unwrap();
+        let run = |status, exit_code| ScriptResult {
+            name: "01-a.sh".into(),
+            status,
+            exit_code,
+            duration_ms: 1500,
+        };
+        m.observe_script(&run(ScriptStatus::Ok, Some(0)), "routable");
+        m.observe_script(&run(ScriptStatus::Failed, Some(2)), "routable");
+        m.observe_script(&run(ScriptStatus::Timeout, None), "routable");
+        let text = m.gather();
+        for want in [
+            r#"netevd_script_executions_total{event_type="routable",script="01-a.sh"} 3"#,
+            r#"netevd_script_failures_total{exit_code="2",script="01-a.sh"} 1"#,
+            r#"netevd_script_failures_total{exit_code="timeout",script="01-a.sh"} 1"#,
+            r#"netevd_script_duration_seconds_sum{script="01-a.sh"} 4.5"#,
+        ] {
+            assert!(text.contains(want), "missing {want} in\n{text}");
+        }
+    }
 }

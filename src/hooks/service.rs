@@ -128,11 +128,11 @@ async fn dispatch(
     let took = started.elapsed();
     match &result {
         Err(e) => warn!(event = %event.event, link = %event.link, "hook dispatch failed: {}", e),
-        Ok(()) => debug!(event = %event.event, link = %event.link, "hook dispatched"),
+        Ok(_) => debug!(event = %event.event, link = %event.link, "hook dispatched"),
     }
     if let Some(l) = log {
         match result {
-            Ok(()) => l.record(event, "dispatched", took, None),
+            Ok(runs) => l.record_run(event, took, runs.into_iter().map(|r| r.result).collect()),
             Err(e) => l.record(event, "failed", took, Some(e.to_string())),
         };
     }
@@ -190,6 +190,42 @@ mod tests {
         assert!(recs.iter().all(|r| r.outcome == "dispatched"));
         assert!(recs.iter().any(|r| r.event.event == "routable"));
         assert_eq!(log.total(), 2);
+    }
+
+    #[tokio::test]
+    async fn failing_script_is_journaled_as_failed() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("routable.d");
+        std::fs::create_dir_all(&dir).unwrap();
+        for (name, code) in [("01-ok.sh", 0), ("02-bad.sh", 7)] {
+            let script = dir.join(name);
+            std::fs::write(&script, format!("#!/bin/sh\nexit {code}\n")).unwrap();
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        let log = Arc::new(EventLog::new(10));
+        let opts = HookDispatchOpts {
+            config_root: tmp.path().to_path_buf(),
+            timeout: Duration::from_secs(5),
+        };
+        let (tx, handle) = spawn_with_log(
+            opts,
+            Duration::ZERO,
+            None,
+            RateLimitConfig::default(),
+            16,
+            Some(log.clone()),
+        );
+        tx.send(HookEventV1::new("routable", "eth0", 2, "netlink"))
+            .unwrap();
+        drop(tx);
+        handle.await.unwrap();
+        let recs = log.recent(10, &Default::default());
+        assert_eq!(recs[0].outcome, "failed");
+        assert_eq!(recs[0].scripts.len(), 2);
+        assert_eq!(
+            recs[0].error.as_deref(),
+            Some("1 of 2 scripts failed: 02-bad.sh (exit 7)")
+        );
     }
 
     #[tokio::test]

@@ -97,13 +97,26 @@ pub struct ReloadResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HealthStatus {
+    /// `ok` or `degraded`.
     pub status: String,
     pub checks: HealthChecks,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HealthChecks {
-    pub dbus: bool,
+    /// A netlink dump succeeds.
     pub netlink: bool,
+    /// The D-Bus system bus is reachable; absent when the backend needs none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dbus: Option<bool>,
+    /// The hook dispatch service accepts events; absent outside the daemon.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hooks: Option<bool>,
     pub config: bool,
+}
+
+impl HealthChecks {
+    pub fn all_ok(&self) -> bool {
+        self.netlink && self.config && self.dbus != Some(false) && self.hooks != Some(false)
+    }
 }

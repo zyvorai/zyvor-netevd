@@ -62,9 +62,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # lychee-action@v2 ends with "lychee: command not found" on the
+      # self-hosted ARM64 runner, so install and call a pinned release.
       - name: Check links
-        uses: lycheeverse/lychee-action@v2
-        with:
-          args: --verbose --no-progress --config lychee.toml '**/*.md' '**/*.rs'
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fail: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LYCHEE_VERSION: v0.24.2
+        run: |
+          set -euo pipefail
+          target="lychee-$(uname -m)-unknown-linux-gnu"
+          curl -sSfL "https://github.com/lycheeverse/lychee/releases/download/lychee-${LYCHEE_VERSION}/${target}.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/${target}/lychee" --verbose --no-progress --config lychee.toml '**/*.md' '**/*.rs'

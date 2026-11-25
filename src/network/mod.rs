@@ -6,6 +6,7 @@
 pub mod address;
 pub mod ipv6;
 pub mod link;
+pub mod query;
 pub mod route;
 pub mod routing_rule;
 pub mod startup;
