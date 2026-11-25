@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 
 use super::event::HookEventV1;
+use crate::system::execute::{ScriptResult, ScriptStatus};
 
 pub const DEFAULT_HISTORY: usize = 1000;
 pub const DEFAULT_JOURNAL_MAX_BYTES: u64 = 10 * 1024 * 1024;
@@ -37,6 +38,9 @@ pub struct JournalRecord {
     pub duration_ms: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// Per-script results, in execution order (empty if nothing ran).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scripts: Vec<ScriptResult>,
 }
 
 /// Query filter shared by the REST API and the CLI.
@@ -46,6 +50,8 @@ pub struct EventFilter {
     pub event: Option<String>,
     /// Only records with `seq` greater than this.
     pub since: Option<u64>,
+    /// `dispatched`, `failed` or `rate-limited`.
+    pub outcome: Option<String>,
 }
 
 impl EventFilter {
@@ -53,6 +59,7 @@ impl EventFilter {
         self.interface.as_deref().is_none_or(|i| r.event.link == i)
             && self.event.as_deref().is_none_or(|e| r.event.event == e)
             && self.since.is_none_or(|s| r.seq > s)
+            && self.outcome.as_deref().is_none_or(|o| r.outcome == o)
     }
 }
 
@@ -164,6 +171,44 @@ impl EventLog {
         duration: Duration,
         error: Option<String>,
     ) -> Arc<JournalRecord> {
+        self.push(event, outcome, duration, error, Vec::new())
+    }
+
+    /// Record a dispatch that ran scripts. The outcome is `failed` when any
+    /// script did not succeed, with `error` naming them.
+    pub fn record_run(
+        &self,
+        event: &HookEventV1,
+        duration: Duration,
+        scripts: Vec<ScriptResult>,
+    ) -> Arc<JournalRecord> {
+        let bad: Vec<String> = scripts
+            .iter()
+            .filter(|s| s.status != ScriptStatus::Ok)
+            .map(ScriptResult::describe)
+            .collect();
+        let (outcome, error) = if bad.is_empty() {
+            ("dispatched", None)
+        } else {
+            let msg = format!(
+                "{} of {} scripts failed: {}",
+                bad.len(),
+                scripts.len(),
+                bad.join(", ")
+            );
+            ("failed", Some(msg))
+        };
+        self.push(event, outcome, duration, error, scripts)
+    }
+
+    fn push(
+        &self,
+        event: &HookEventV1,
+        outcome: &str,
+        duration: Duration,
+        error: Option<String>,
+        scripts: Vec<ScriptResult>,
+    ) -> Arc<JournalRecord> {
         let rec = {
             let mut g = self.inner.lock().unwrap();
             let rec = Arc::new(JournalRecord {
@@ -172,6 +217,7 @@ impl EventLog {
                 outcome: outcome.to_string(),
                 duration_ms: duration.as_millis() as u64,
                 error,
+                scripts,
             });
             g.next_seq += 1;
             if g.ring.len() == self.capacity {
@@ -306,6 +352,47 @@ mod tests {
             std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
             0o600
         );
+    }
+
+    #[test]
+    fn script_failures_set_outcome_and_survive_replay() {
+        let log = EventLog::new(4);
+        let res = |name: &str, status, exit_code| ScriptResult {
+            name: name.into(),
+            status,
+            exit_code,
+            duration_ms: 1,
+        };
+        let ok = log.record_run(
+            &ev("mtu", "eth0"),
+            Duration::ZERO,
+            vec![res("01-a", ScriptStatus::Ok, Some(0))],
+        );
+        assert_eq!((ok.outcome.as_str(), &ok.error), ("dispatched", &None));
+        let bad = log.record_run(
+            &ev("mtu", "eth0"),
+            Duration::ZERO,
+            vec![
+                res("01-a", ScriptStatus::Ok, Some(0)),
+                res("02-b", ScriptStatus::Failed, Some(4)),
+            ],
+        );
+        assert_eq!(bad.outcome, "failed");
+        assert_eq!(
+            bad.error.as_deref(),
+            Some("1 of 2 scripts failed: 02-b (exit 4)")
+        );
+        let f = EventFilter {
+            outcome: Some("failed".into()),
+            ..Default::default()
+        };
+        assert_eq!(log.recent(10, &f).len(), 1);
+        let line = serde_json::to_string(&*bad).unwrap();
+        let back: JournalRecord = serde_json::from_str(&line).unwrap();
+        assert_eq!(&back, &*bad);
+        let (events, errors) = crate::hooks::explain::load_events(&line);
+        assert!(errors.is_empty(), "{errors:?}");
+        assert_eq!(events.len(), 1);
     }
 
     #[tokio::test]

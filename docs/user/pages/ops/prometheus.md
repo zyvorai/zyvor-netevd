@@ -20,6 +20,11 @@ Scrape hook execution, event throughput, routing-rule counts, and netlink health
 - Endpoint: `http://<host>:9090/metrics` on the API server (Prometheus text exposition)
 - `metrics.port` (default 9091) is stored in the config and logged at startup; the daemon serves `/metrics` on `api.port`
 
+With `api.auth.token_file` set, add `authorization: {credentials_file: /path/token}` to the scrape job (or set
+`api.auth.public_metrics: true`), and `scheme: https` when `api.tls` is enabled. `netevd_script_executions_total`,
+`netevd_script_failures_total` (label `exit_code`: a number, `signal`, `timeout` or `spawn-error`) and
+`netevd_script_duration_seconds` count every script run.
+
 ## Operate from CLI
 
 1. Confirm metrics are enabled:

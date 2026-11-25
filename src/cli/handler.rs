@@ -1,34 +1,80 @@
 // Copyright 2026 Zyvor AI Labs · https://zyvor.dev
 // SPDX-License-Identifier: LicenseRef-Zyvor-Production-2.0
 
+use crate::api::models::HealthStatus;
+use crate::cli::http::{encode, Client};
 use crate::cli::{Cli, Commands, ListResource, OutputFormat, ShowResource};
 use crate::config::Config;
-use anyhow::Result;
+use crate::hooks::HookEventV1;
+use crate::system::execute::{failure_summary, run_scripts, ScriptRun};
+use anyhow::{Context, Result};
 use std::path::Path;
+use std::time::Duration;
 
 pub async fn handle_command(cli: Cli) -> Result<()> {
     match cli.command {
-        Some(Commands::Status { format, endpoint }) => handle_status(format, &endpoint).await,
+        Some(Commands::Status { format, api }) => {
+            handle_status(format, &Client::new(&api.options())?).await
+        }
         Some(Commands::List {
             resource,
             format,
-            endpoint,
-        }) => handle_list(resource, format, &endpoint).await,
+            api,
+        }) => handle_list(resource, format, &Client::new(&api.options())?).await,
         Some(Commands::Show {
             resource,
             name,
             format,
-            endpoint,
-        }) => handle_show(resource, &name, format, &endpoint).await,
+            api,
+        }) => handle_show(resource, &name, format, &Client::new(&api.options())?).await,
         Some(Commands::Events {
             follow,
             interface,
             event_type,
             tail,
             format,
-            endpoint,
-        }) => handle_events(follow, interface, event_type, tail, format, &endpoint).await,
-        Some(Commands::Reload { endpoint }) => handle_reload(&endpoint).await,
+            outcome,
+            api,
+        }) => {
+            let filter = EventsArgs {
+                interface,
+                event_type,
+                outcome,
+            };
+            handle_events(follow, filter, tail, format, &Client::new(&api.options())?).await
+        }
+        Some(Commands::Reload { api }) => handle_reload(&Client::new(&api.options())?).await,
+        Some(Commands::Health { format, api }) => {
+            handle_health(format, &Client::new(&api.options())?).await
+        }
+        Some(Commands::Trigger {
+            event,
+            link,
+            index,
+            backend,
+            addresses,
+            config_root,
+            from_file,
+            timeout,
+            allow_root,
+            format,
+        }) => {
+            let args = EventArgs {
+                event,
+                link,
+                index,
+                backend,
+                addresses,
+                from_file,
+            };
+            let opts = TriggerOpts {
+                config_root,
+                timeout,
+                allow_root,
+                uid: nix::unistd::Uid::effective().as_raw(),
+            };
+            handle_trigger(&cli.config, args, opts, format).await
+        }
         Some(Commands::Validate {
             config,
             strict,
@@ -45,15 +91,15 @@ pub async fn handle_command(cli: Cli) -> Result<()> {
             format,
         }) => handle_explain(
             &cli.config,
-            ExplainArgs {
+            EventArgs {
                 event,
                 link,
                 index,
                 backend,
                 addresses,
-                config_root,
                 from_file,
             },
+            config_root,
             format,
         ),
         Some(Commands::Test {
@@ -74,8 +120,8 @@ pub async fn handle_command(cli: Cli) -> Result<()> {
     }
 }
 
-async fn handle_status(format: OutputFormat, endpoint: &str) -> Result<()> {
-    let status = get_daemon_status(endpoint).await?;
+async fn handle_status(format: OutputFormat, client: &Client) -> Result<()> {
+    let status = get_daemon_status(client).await?;
 
     match format {
         OutputFormat::Json => {
@@ -98,22 +144,22 @@ async fn handle_status(format: OutputFormat, endpoint: &str) -> Result<()> {
     Ok(())
 }
 
-async fn handle_list(resource: ListResource, format: OutputFormat, endpoint: &str) -> Result<()> {
+async fn handle_list(resource: ListResource, format: OutputFormat, client: &Client) -> Result<()> {
     match resource {
         ListResource::Interfaces => {
-            let interfaces = get_interfaces(endpoint).await?;
+            let interfaces = get_interfaces(client).await?;
             print_list("Interfaces", &interfaces, format)?;
         }
         ListResource::Routes => {
-            let routes = get_routes(endpoint).await?;
+            let routes = get_routes(client).await?;
             print_list("Routes", &routes, format)?;
         }
         ListResource::Rules => {
-            let rules = get_rules(endpoint).await?;
+            let rules = get_rules(client).await?;
             print_list("Rules", &rules, format)?;
         }
         ListResource::Scripts => {
-            let scripts = get_scripts(endpoint).await?;
+            let scripts = get_scripts(client).await?;
             print_list("Scripts", &scripts, format)?;
         }
     }
@@ -125,11 +171,11 @@ async fn handle_show(
     resource: ShowResource,
     name: &str,
     format: OutputFormat,
-    endpoint: &str,
+    client: &Client,
 ) -> Result<()> {
     match resource {
         ShowResource::Interface => {
-            let interface = get_interface_details(endpoint, name).await?;
+            let interface = get_interface_details(client, name).await?;
             match format {
                 OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&interface)?),
                 OutputFormat::Yaml => println!("{}", serde_yaml::to_string(&interface)?),
@@ -137,7 +183,7 @@ async fn handle_show(
             }
         }
         ShowResource::Status => {
-            handle_status(format, endpoint).await?;
+            handle_status(format, client).await?;
         }
         _ => {
             println!("Show {} not implemented yet", name);
@@ -147,33 +193,66 @@ async fn handle_show(
     Ok(())
 }
 
-async fn handle_events(
-    follow: bool,
+/// Filters of the `events` command.
+#[derive(Debug, Clone, Default)]
+struct EventsArgs {
     interface: Option<String>,
     event_type: Option<String>,
+    outcome: Option<String>,
+}
+
+async fn handle_events(
+    follow: bool,
+    filter: EventsArgs,
     tail: usize,
     format: OutputFormat,
-    endpoint: &str,
+    client: &Client,
 ) -> Result<()> {
+    let recent = get_recent_events(client, tail, &filter).await?;
+    print_events(&recent, format.clone())?;
     if follow {
-        let recent =
-            get_recent_events(endpoint, tail, interface.clone(), event_type.clone()).await?;
-        print_events(&recent, format.clone())?;
-        stream_events(endpoint, interface, event_type, format).await?;
-    } else {
-        let events = get_recent_events(endpoint, tail, interface, event_type).await?;
-        print_events(&events, format)?;
+        stream_events(client, &filter, format).await?;
     }
 
     Ok(())
 }
 
-async fn handle_reload(endpoint: &str) -> Result<()> {
-    let response = send_reload_request(endpoint).await?;
+async fn handle_reload(client: &Client) -> Result<()> {
+    let response = send_reload_request(client).await?;
 
     println!("  Message: {}", response.message);
 
     Ok(())
+}
+
+async fn handle_health(format: OutputFormat, client: &Client) -> Result<()> {
+    let (ready, health) = get_health(client).await?;
+    match format {
+        OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&health)?),
+        OutputFormat::Yaml => println!("{}", serde_yaml::to_string(&health)?),
+        _ => print!("{}", health_text(&health)),
+    }
+    if ready {
+        Ok(())
+    } else {
+        anyhow::bail!("netevd is not ready")
+    }
+}
+
+fn health_text(h: &HealthStatus) -> String {
+    let show = |v: Option<bool>| match v {
+        Some(true) => "ok",
+        Some(false) => "FAILED",
+        None => "not used",
+    };
+    format!(
+        "Status : {}\n  netlink: {}\n  dbus   : {}\n  hooks  : {}\n  config : {}\n",
+        h.status,
+        show(Some(h.checks.netlink)),
+        show(h.checks.dbus),
+        show(h.checks.hooks),
+        show(Some(h.checks.config)),
+    )
 }
 
 fn handle_check_config(path: &Path, strict: bool, format: OutputFormat) -> Result<()> {
@@ -204,25 +283,20 @@ fn handle_check_config(path: &Path, strict: bool, format: OutputFormat) -> Resul
     }
 }
 
-struct ExplainArgs {
+/// Which events `explain` and `trigger` act on.
+struct EventArgs {
     event: Option<String>,
     link: String,
     index: u32,
     backend: String,
     addresses: Vec<String>,
-    config_root: Option<std::path::PathBuf>,
     from_file: Option<std::path::PathBuf>,
 }
 
-fn handle_explain(config_path: &Path, a: ExplainArgs, format: OutputFormat) -> Result<()> {
-    use crate::hooks::explain::{default_root, explain_event, load_events, synthetic_event};
-    // A missing config file means defaults, exactly as the daemon does.
-    let config = Config::parse_from_path(&config_path.to_string_lossy())?;
-    let root = a.config_root.unwrap_or_else(default_root);
-    let uid = nix::unistd::Uid::effective().as_raw();
-    let env = |k: &str| std::env::var(k).ok();
-
-    let events = if let Some(f) = &a.from_file {
+/// The events named on the command line, or recorded in `--from-file`.
+fn events_from(a: EventArgs) -> Result<Vec<HookEventV1>> {
+    use crate::hooks::explain::{load_events, synthetic_event};
+    Ok(if let Some(f) = &a.from_file {
         let meta = std::fs::metadata(f)?;
         if meta.len() > 64 * 1024 * 1024 {
             anyhow::bail!("{} is larger than 64 MiB", f.display());
@@ -242,7 +316,22 @@ fn handle_explain(config_path: &Path, a: ExplainArgs, format: OutputFormat) -> R
             &a.backend,
             a.addresses,
         )]
-    };
+    })
+}
+
+fn handle_explain(
+    config_path: &Path,
+    a: EventArgs,
+    config_root: Option<std::path::PathBuf>,
+    format: OutputFormat,
+) -> Result<()> {
+    use crate::hooks::explain::{default_root, explain_event};
+    // A missing config file means defaults, exactly as the daemon does.
+    let config = Config::parse_from_path(&config_path.to_string_lossy())?;
+    let root = config_root.unwrap_or_else(default_root);
+    let uid = nix::unistd::Uid::effective().as_raw();
+    let env = |k: &str| std::env::var(k).ok();
+    let events = events_from(a)?;
 
     let explained: Vec<_> = events
         .iter()
@@ -260,6 +349,140 @@ fn handle_explain(config_path: &Path, a: ExplainArgs, format: OutputFormat) -> R
         }
     }
     Ok(())
+}
+
+struct TriggerOpts {
+    config_root: Option<std::path::PathBuf>,
+    timeout: Option<u64>,
+    allow_root: bool,
+    /// Effective user id the scripts would run as.
+    uid: u32,
+}
+
+/// What `trigger` did for one event.
+#[derive(serde::Serialize)]
+struct Triggered {
+    event: String,
+    link: String,
+    /// Why no script ran, when none did.
+    skipped: Option<String>,
+    scripts: Vec<ScriptRun>,
+}
+
+/// Printable form of captured output: control characters other than newline
+/// and tab are replaced so scripts cannot drive the terminal.
+fn printable(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            '\n' | '\t' => c,
+            c if c.is_control() => '?',
+            c => c,
+        })
+        .collect()
+}
+
+/// Run the scripts the daemon would run for `ev`, after the same interface
+/// selector and filter decisions that `explain` reports.
+async fn trigger_event(
+    ev: &HookEventV1,
+    config: &Config,
+    root: &Path,
+    opts: &TriggerOpts,
+) -> Result<Triggered> {
+    use crate::hooks::explain::explain_event;
+    if !HookEventV1::is_known_event(&ev.event) {
+        anyhow::bail!(
+            "unknown event '{}'; known: {}",
+            printable(&ev.event),
+            crate::hooks::event::HOOK_STATES.join(", ")
+        );
+    }
+    let env = |k: &str| std::env::var(k).ok();
+    let plan = explain_event(ev, config, root, opts.uid, &env);
+    let skipped = if !plan.interface_selected {
+        Some(format!("interface dropped: {}", plan.interface_reason))
+    } else if !plan.would_run && plan.filter_decision.starts_with("ignore") {
+        Some(format!("filters: {}", plan.filter_decision))
+    } else if !plan.would_run {
+        Some(format!(
+            "no runnable script in {}",
+            plan.hook_dir.as_deref().unwrap_or("(none)")
+        ))
+    } else {
+        None
+    };
+    let scripts = if skipped.is_some() {
+        Vec::new()
+    } else {
+        let dir =
+            crate::hooks::dispatch::hook_dir(root, &ev.event).context("unknown hook state")?;
+        let timeout = opts.timeout.unwrap_or(config.hooks.timeout_sec);
+        run_scripts(
+            &dir.to_string_lossy(),
+            ev.to_env(),
+            Duration::from_secs(timeout),
+            &config.hooks.sandbox,
+        )
+        .await?
+    };
+    Ok(Triggered {
+        event: ev.event.clone(),
+        link: printable(&ev.link),
+        skipped,
+        scripts,
+    })
+}
+
+fn trigger_text(t: &Triggered) -> String {
+    use std::fmt::Write;
+    let mut o = format!("Event {} on {}\n", t.event, t.link);
+    if let Some(why) = &t.skipped {
+        let _ = writeln!(o, "  nothing run ({why})");
+    }
+    for s in &t.scripts {
+        let _ = writeln!(o, "  {} {} ms", s.result.describe(), s.result.duration_ms);
+        for (label, text) in [("stdout", &s.stdout), ("stderr", &s.stderr)] {
+            for line in printable(text).lines() {
+                let _ = writeln!(o, "    {label}| {line}");
+            }
+        }
+    }
+    o
+}
+
+async fn handle_trigger(
+    config_path: &Path,
+    args: EventArgs,
+    opts: TriggerOpts,
+    format: OutputFormat,
+) -> Result<()> {
+    if opts.uid == 0 && !opts.allow_root {
+        anyhow::bail!(
+            "refusing to run hook scripts as root: the daemon runs them as 'netevd' \
+             (try `sudo -u netevd netevd trigger ...`, or pass --allow-root)"
+        );
+    }
+    let config = Config::parse_from_path(&config_path.to_string_lossy())?;
+    let root = opts
+        .config_root
+        .clone()
+        .unwrap_or_else(crate::hooks::explain::default_root);
+    let mut results = Vec::new();
+    for ev in events_from(args)? {
+        let t = trigger_event(&ev, &config, &root, &opts).await?;
+        if !matches!(format, OutputFormat::Json) {
+            print!("{}", trigger_text(&t));
+        }
+        results.push(t);
+    }
+    if matches!(format, OutputFormat::Json) {
+        println!("{}", serde_json::to_string_pretty(&results)?);
+    }
+    let failed: Vec<ScriptRun> = results.into_iter().flat_map(|t| t.scripts).collect();
+    match failure_summary(&failed) {
+        None => Ok(()),
+        Some(msg) => anyhow::bail!(msg),
+    }
 }
 
 async fn handle_test_script(
@@ -325,8 +548,6 @@ fn handle_version(detailed: bool) -> Result<()> {
 
 // REST API client calls (see `cli::http`).
 
-use crate::cli::http::{encode, get_json, post_json, stream_sse};
-
 /// The API wraps every payload as `{success, data, error, timestamp}`.
 #[derive(serde::Deserialize)]
 struct Envelope<T> {
@@ -355,54 +576,67 @@ struct DaemonStatus {
     events_processed: u64,
 }
 
-async fn get_daemon_status(endpoint: &str) -> Result<DaemonStatus> {
-    let e: Envelope<DaemonStatus> = get_json(endpoint, "/api/v1/status").await?;
+async fn get_daemon_status(client: &Client) -> Result<DaemonStatus> {
+    let e: Envelope<DaemonStatus> = client.get_json("/api/v1/status").await?;
     unwrap_envelope(e, "status")
 }
 
-async fn get_list(endpoint: &str, path: &str) -> Result<Vec<serde_json::Value>> {
-    let e: Envelope<Vec<serde_json::Value>> = get_json(endpoint, path).await?;
+/// Readiness: `true` when `/health/ready` answers 200. A 503 still carries
+/// the checks.
+async fn get_health(client: &Client) -> Result<(bool, HealthStatus)> {
+    let path = "/health/ready";
+    let (status, body) = client.exchange("GET", path, None).await?;
+    if status != 200 && status != 503 {
+        anyhow::bail!("GET {path} failed with HTTP {status}");
+    }
+    let health = serde_json::from_slice(&body)
+        .with_context(|| format!("unexpected response from {path}"))?;
+    Ok((status == 200, health))
+}
+
+async fn get_list(client: &Client, path: &str) -> Result<Vec<serde_json::Value>> {
+    let e: Envelope<Vec<serde_json::Value>> = client.get_json(path).await?;
     unwrap_envelope(e, path)
 }
 
-async fn get_interfaces(endpoint: &str) -> Result<Vec<serde_json::Value>> {
-    get_list(endpoint, "/api/v1/interfaces").await
+async fn get_interfaces(client: &Client) -> Result<Vec<serde_json::Value>> {
+    get_list(client, "/api/v1/interfaces").await
 }
 
-async fn get_routes(endpoint: &str) -> Result<Vec<serde_json::Value>> {
-    get_list(endpoint, "/api/v1/routes").await
+async fn get_routes(client: &Client) -> Result<Vec<serde_json::Value>> {
+    get_list(client, "/api/v1/routes").await
 }
 
-async fn get_rules(endpoint: &str) -> Result<Vec<serde_json::Value>> {
-    get_list(endpoint, "/api/v1/rules").await
+async fn get_rules(client: &Client) -> Result<Vec<serde_json::Value>> {
+    get_list(client, "/api/v1/rules").await
 }
 
-async fn get_scripts(_endpoint: &str) -> Result<Vec<serde_json::Value>> {
+async fn get_scripts(_client: &Client) -> Result<Vec<serde_json::Value>> {
     anyhow::bail!(
         "the API does not list scripts; use `netevd explain <event>` to see what would run"
     )
 }
 
-async fn get_interface_details(endpoint: &str, name: &str) -> Result<serde_json::Value> {
-    let e: Envelope<serde_json::Value> =
-        get_json(endpoint, &format!("/api/v1/interfaces/{}", encode(name))).await?;
+async fn get_interface_details(client: &Client, name: &str) -> Result<serde_json::Value> {
+    let e: Envelope<serde_json::Value> = client
+        .get_json(&format!("/api/v1/interfaces/{}", encode(name)))
+        .await?;
     unwrap_envelope(e, "interface")
 }
 
-fn events_query(
-    limit: Option<usize>,
-    interface: &Option<String>,
-    event_type: &Option<String>,
-) -> String {
+fn events_query(limit: Option<usize>, filter: &EventsArgs) -> String {
     let mut q = Vec::new();
     if let Some(l) = limit {
         q.push(format!("limit={l}"));
     }
-    if let Some(i) = interface {
-        q.push(format!("interface={}", encode(i)));
-    }
-    if let Some(t) = event_type {
-        q.push(format!("event={}", encode(t)));
+    for (key, value) in [
+        ("interface", &filter.interface),
+        ("event", &filter.event_type),
+        ("outcome", &filter.outcome),
+    ] {
+        if let Some(v) = value {
+            q.push(format!("{key}={}", encode(v)));
+        }
     }
     if q.is_empty() {
         String::new()
@@ -412,31 +646,25 @@ fn events_query(
 }
 
 async fn get_recent_events(
-    endpoint: &str,
+    client: &Client,
     tail: usize,
-    interface: Option<String>,
-    event_type: Option<String>,
+    filter: &EventsArgs,
 ) -> Result<Vec<serde_json::Value>> {
-    let q = events_query(Some(tail), &interface, &event_type);
-    get_list(endpoint, &format!("/api/v1/events{q}")).await
+    let q = events_query(Some(tail), filter);
+    get_list(client, &format!("/api/v1/events{q}")).await
 }
 
-async fn stream_events(
-    endpoint: &str,
-    interface: Option<String>,
-    event_type: Option<String>,
-    format: OutputFormat,
-) -> Result<()> {
-    let q = events_query(None, &interface, &event_type);
-    stream_sse(
-        endpoint,
-        &format!("/api/v1/events/stream{q}"),
-        |data| match serde_json::from_str::<serde_json::Value>(data) {
-            Ok(v) => print_events(std::slice::from_ref(&v), format.clone()).is_ok(),
-            Err(_) => true,
-        },
-    )
-    .await
+async fn stream_events(client: &Client, filter: &EventsArgs, format: OutputFormat) -> Result<()> {
+    let q = events_query(None, filter);
+    client
+        .stream_sse(
+            &format!("/api/v1/events/stream{q}"),
+            |data| match serde_json::from_str::<serde_json::Value>(data) {
+                Ok(v) => print_events(std::slice::from_ref(&v), format.clone()).is_ok(),
+                Err(_) => true,
+            },
+        )
+        .await
 }
 
 #[derive(serde::Deserialize)]
@@ -444,8 +672,8 @@ struct ReloadResponse {
     message: String,
 }
 
-async fn send_reload_request(endpoint: &str) -> Result<ReloadResponse> {
-    post_json(endpoint, "/api/v1/reload", "{}").await
+async fn send_reload_request(client: &Client) -> Result<ReloadResponse> {
+    client.post_json("/api/v1/reload", "{}").await
 }
 
 /// One-line text form of an API event.
@@ -536,12 +764,12 @@ mod tests {
     use std::time::Duration;
     use tokio::sync::RwLock;
 
-    async fn serve(log: Arc<EventLog>) -> String {
+    async fn serve(log: Arc<EventLog>) -> Client {
         let app = create_api_routes_with_log(Arc::new(RwLock::new(NetworkState::new())), log);
         let l = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = l.local_addr().unwrap();
         tokio::spawn(async move { axum::serve(l, app).await.unwrap() });
-        format!("http://{addr}")
+        Client::plain(&format!("http://{addr}")).unwrap()
     }
 
     fn rec(log: &EventLog, ev: &str, link: &str) {
@@ -573,13 +801,17 @@ mod tests {
         rec(&log, "mtu", "eth1");
         rec(&log, "mtu", "eth0");
         let ep = serve(log).await;
-        let all = get_recent_events(&ep, 10, None, None).await.unwrap();
+        let none = EventsArgs::default();
+        let all = get_recent_events(&ep, 10, &none).await.unwrap();
         assert_eq!(all.len(), 3);
-        let one = get_recent_events(&ep, 1, None, None).await.unwrap();
+        let one = get_recent_events(&ep, 1, &none).await.unwrap();
         assert_eq!(one[0]["id"], "3");
-        let f = get_recent_events(&ep, 10, Some("eth0".into()), Some("mtu".into()))
-            .await
-            .unwrap();
+        let both = EventsArgs {
+            interface: Some("eth0".into()),
+            event_type: Some("mtu".into()),
+            outcome: None,
+        };
+        let f = get_recent_events(&ep, 10, &both).await.unwrap();
         assert_eq!(f.len(), 1);
         assert_eq!(f[0]["event_type"], "mtu");
         let line = event_line(&f[0]);
@@ -587,7 +819,15 @@ mod tests {
             line.contains("mtu") && line.contains("eth0") && line.contains("[192.0.2.1]"),
             "{line}"
         );
-        handle_events(false, None, None, 5, OutputFormat::Text, &ep)
+        let failed = EventsArgs {
+            outcome: Some("failed".into()),
+            ..Default::default()
+        };
+        assert!(get_recent_events(&ep, 10, &failed)
+            .await
+            .unwrap()
+            .is_empty());
+        handle_events(false, none, 5, OutputFormat::Text, &ep)
             .await
             .unwrap();
     }
@@ -598,9 +838,9 @@ mod tests {
         let ep = serve(log.clone()).await;
         let got = Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
         let got2 = got.clone();
-        let ep2 = ep.clone();
+        let ep2 = ep;
         let task = tokio::spawn(async move {
-            stream_sse(&ep2, "/api/v1/events/stream?interface=eth0", |d| {
+            ep2.stream_sse("/api/v1/events/stream?interface=eth0", |d| {
                 got2.lock().unwrap().push(d.to_string());
                 false
             })
@@ -628,7 +868,8 @@ mod tests {
 
     #[tokio::test]
     async fn unreachable_daemon_is_a_clear_error() {
-        let e = get_daemon_status("http://127.0.0.1:1").await.err().unwrap();
+        let client = Client::plain("http://127.0.0.1:1").unwrap();
+        let e = get_daemon_status(&client).await.err().unwrap();
         assert!(e.to_string().contains("cannot connect"), "{e}");
     }
 
@@ -637,7 +878,9 @@ mod tests {
         let ep = serve(Arc::new(EventLog::new(2))).await;
         let r = send_reload_request(&ep).await.unwrap();
         assert!(!r.message.is_empty());
-        assert!(get_interfaces(&ep).await.unwrap().is_empty());
+        let interfaces = get_interfaces(&ep).await.unwrap();
+        assert!(interfaces.iter().any(|i| i["name"] == "lo"));
+        get_routes(&ep).await.unwrap();
         assert!(get_rules(&ep).await.unwrap().is_empty());
         assert!(get_interface_details(&ep, "nope").await.is_err());
         assert!(get_scripts(&ep).await.is_err());
@@ -645,10 +888,124 @@ mod tests {
 
     #[test]
     fn query_builder_encodes() {
-        assert_eq!(events_query(None, &None, &None), "");
+        assert_eq!(events_query(None, &EventsArgs::default()), "");
+        let f = EventsArgs {
+            interface: Some("a b".into()),
+            event_type: Some("mtu".into()),
+            outcome: Some("failed".into()),
+        };
         assert_eq!(
-            events_query(Some(5), &Some("a b".into()), &Some("mtu".into())),
-            "?limit=5&interface=a%20b&event=mtu"
+            events_query(Some(5), &f),
+            "?limit=5&interface=a%20b&event=mtu&outcome=failed"
         );
+    }
+
+    fn hook(root: &Path, dir: &str, name: &str, body: &str) {
+        use std::os::unix::fs::PermissionsExt;
+        let d = root.join(dir);
+        std::fs::create_dir_all(&d).unwrap();
+        let p = d.join(name);
+        std::fs::write(&p, body).unwrap();
+        std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    fn trigger_opts(root: &Path) -> TriggerOpts {
+        TriggerOpts {
+            config_root: Some(root.to_path_buf()),
+            timeout: Some(5),
+            allow_root: false,
+            uid: 1000,
+        }
+    }
+
+    fn event_args(event: &str, link: &str) -> EventArgs {
+        EventArgs {
+            event: Some(event.into()),
+            link: link.into(),
+            index: 2,
+            backend: "netlink".into(),
+            addresses: vec!["192.0.2.7".into()],
+            from_file: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn trigger_runs_scripts_and_reports_failures() {
+        let t = tempfile::tempdir().unwrap();
+        hook(
+            t.path(),
+            "routable.d",
+            "01-env",
+            "#!/bin/sh\necho \"$LINK $ADDRESSES\"\nprintf '\\033[2J' >&2\n",
+        );
+        hook(t.path(), "routable.d", "02-bad", "#!/bin/sh\nexit 5\n");
+        let opts = trigger_opts(t.path());
+        let ev = events_from(event_args("routable", "eth0"))
+            .unwrap()
+            .remove(0);
+        let got = trigger_event(&ev, &Config::default(), t.path(), &opts)
+            .await
+            .unwrap();
+        assert_eq!(got.skipped, None);
+        assert_eq!(got.scripts[0].stdout, "eth0 192.0.2.7\n");
+        let text = trigger_text(&got);
+        assert!(text.contains("stdout| eth0 192.0.2.7"), "{text}");
+        assert!(
+            !text.contains('\u{1b}'),
+            "escape sequences must not reach the terminal"
+        );
+        assert!(text.contains("02-bad (exit 5)"), "{text}");
+        let e = handle_trigger(
+            Path::new("/nonexistent/netevd.yaml"),
+            event_args("routable", "eth0"),
+            opts,
+            OutputFormat::Json,
+        )
+        .await
+        .unwrap_err();
+        assert_eq!(e.to_string(), "1 of 2 scripts failed: 02-bad (exit 5)");
+    }
+
+    #[tokio::test]
+    async fn trigger_honours_selector_root_guard_and_unknown_events() {
+        let t = tempfile::tempdir().unwrap();
+        let marker = t.path().join("ran");
+        hook(
+            t.path(),
+            "mtu.d",
+            "01",
+            &format!("#!/bin/sh\n: > {}\n", marker.display()),
+        );
+        let opts = trigger_opts(t.path());
+        // `lo` is excluded by the default selector, as in the daemon.
+        let ev = events_from(event_args("mtu", "lo")).unwrap().remove(0);
+        let got = trigger_event(&ev, &Config::default(), t.path(), &opts)
+            .await
+            .unwrap();
+        assert!(got.skipped.unwrap().contains("interface dropped"));
+        let ev = events_from(event_args("carrier", "eth0"))
+            .unwrap()
+            .remove(0);
+        let got = trigger_event(&ev, &Config::default(), t.path(), &opts)
+            .await
+            .unwrap();
+        assert!(got.skipped.unwrap().contains("no runnable script"));
+        let ev = events_from(event_args("../mtu", "eth0")).unwrap().remove(0);
+        assert!(trigger_event(&ev, &Config::default(), t.path(), &opts)
+            .await
+            .is_err());
+
+        let mut root = trigger_opts(t.path());
+        root.uid = 0;
+        let e = handle_trigger(
+            Path::new("/nonexistent/netevd.yaml"),
+            event_args("mtu", "eth0"),
+            root,
+            OutputFormat::Text,
+        )
+        .await
+        .unwrap_err();
+        assert!(e.to_string().contains("--allow-root"), "{e}");
+        assert!(!marker.exists(), "nothing may have run");
     }
 }

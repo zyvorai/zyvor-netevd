@@ -28,10 +28,12 @@ jobs:
       - name: Build functional tests
         run: cargo test --test functional_test --no-run
 
+      # Let cargo locate the test binary (its path under target/ is not stable)
+      # and only run it through sudo.
       - name: Run functional tests with sudo
-        run: |
-          TEST_BINARY=$(find target/debug/deps -name "functional_test-*" -type f -executable | head -1)
-          sudo $TEST_BINARY --test-threads=1 --ignored
+        run: >-
+          cargo test --config "target.'cfg(unix)'.runner='sudo -E'"
+          --test functional_test -- --test-threads=1 --ignored
 
       - name: Verify cleanup
         run: |

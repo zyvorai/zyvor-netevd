@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### API security, health and hook testing
+
+- **Security fix: `api.tls` was parsed and validated but ignored; the API was served as plain HTTP.** It is now served over
+  TLS 1.2/1.3. If TLS is enabled and the certificate or key cannot be loaded, the API is **not started** (the daemon keeps
+  running). Check `api.tls` before upgrading.
+- API bearer-token authentication (`api.auth.token_file`, several tokens for rotation, `api.auth.public_metrics`).
+  `/health` and `/health/ready` stay public. `check-config` warns about a non-loopback bind without authentication.
+- CLI client: `https://` endpoints, `--ca-file`, `--token-file`, `NETEVD_ENDPOINT` / `NETEVD_API_TOKEN[_FILE]` /
+  `NETEVD_API_CA_FILE`; refuses to send a token unencrypted to another host; detects truncated responses.
+- `/health` reports live checks (it always said `unknown` with every check `false`); new `/health/ready` (503 when not
+  ready) and `netevd health` (exit status, for container health checks).
+- `netevd trigger <event>`: run the hook scripts for a synthetic or recorded event, with per-script status and output.
+- Journal, events API and CLI record every script's status, exit code and duration. A dispatch with a failing or timed-out
+  script is now `failed` (it was `dispatched`). New `outcome` filter (`netevd events --outcome failed`).
+- Metrics `netevd_script_executions_total`, `_failures_total`, `_duration_seconds`, `netevd_uptime_seconds`,
+  `netevd_interfaces_total`, `netevd_routing_rules_total` and `netevd_routes_total` are now updated (they were never set).
+- `/api/v1/interfaces` reports real state, addresses, MAC, MTU and flags, and `/api/v1/routes` real routes, read from the
+  kernel (state was always `up`, the rest empty). `/api/v1/status` reports the configured backend.
+- **CLI change:** in `netevd events`, the short option of `--format` is now `-o` and of `--tail` is `-n`; `-f` is `--follow`
+  and `-t` is `--event-type`. The old definitions clashed (debug builds panicked on any `events` command).
+- Kubernetes manifests: the ConfigMap used unknown keys (`api.address`, `audit.log_path`) and the probes could not reach
+  the loopback-bound API; both fixed. The compose health check runs `netevd health`.
+- CI: process-group test no longer fails in containers (zombie grandchild), functional tests find their binary with current
+  cargo, link check installs lychee itself, test job links with less memory. Removed a stray `.orig` source file.
+- New dependencies: `rustls`, `tokio-rustls`, `rustls-native-certs`, `ring`, `subtle` (dev: `rcgen`); `cargo update`.
+  No new licences in `deny.toml`.
+
 ### Dependency and toolchain upgrades
 
 - Major bumps: `netlink-packet-route` 0.33 -> 0.34 (this also removes a duplicate copy: `rtnetlink` 0.24 already pulled 0.34),

@@ -18,11 +18,14 @@ exclude = [
   '^/',
 ]
 
-# These two files use root-relative links (`/docs/netevd`, `/contact`) that
+# The two docs files use root-relative links (`/docs/netevd`, `/contact`) that
 # only resolve once synced onto the external docs website — lychee treats
 # unresolvable root-relative links as a hard input error that `exclude`
 # patterns can't filter, so skip these files by path instead.
 exclude_path = [
+  # The CLI's URL parser: its documentation and test cases are deliberately
+  # partial or invalid URLs.
+  "src/cli/http.rs",
   "docs/user/README.md",
   "docs/user/admin-basics.md",
 ]

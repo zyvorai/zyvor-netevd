@@ -122,3 +122,36 @@ $ netevd check-config -c /etc/netevd/netevd.yaml
   config file.
 - Line numbers for unknown keys come from an indentation scanner: block
   style is fully covered, flow style (`{a: 1}`) is not located.
+
+## API access control
+
+The REST API shares one port with `/metrics`. Defaults: bind `127.0.0.1`, no authentication, plain HTTP. Any local user can
+then read interface, route and event data, so enable a token on multi-user hosts, and a token plus TLS before binding to
+another address.
+
+| Setting | Effect |
+|---|---|
+| `api.auth.token_file` | Every request needs `Authorization: Bearer <token>`, except `/health` and `/health/ready` (CORS preflights are answered without one). |
+| `api.auth.public_metrics` | Also exempt `/metrics`. |
+| `api.tls.enabled`, `cert_file`, `key_file` | HTTPS only on `api.port`, TLS 1.2 or 1.3. |
+
+- Token file: one token per line (several allow rotation), `#` comments, at least 16 printable characters, not
+  world-accessible and not group-writable. Generate with
+  `(umask 027; openssl rand -hex 32 > /etc/netevd/api.token) && chgrp netevd /etc/netevd/api.token`.
+- The token file and TLS key are read once at start; restart to pick up changes. The packaged systemd unit runs as user
+  `netevd`, so both must be readable by that user (for example `root:netevd`, mode 0640). Only a daemon started as root
+  (containers) reads them before dropping privileges.
+- Fail closed: if any configured item cannot be loaded, the daemon logs an error and does not serve the API at all. The
+  hooks keep running. **Check this after upgrading if you had set `api.tls.enabled`: earlier releases ignored it and served
+  plain HTTP.**
+- Tokens are compared as SHA-256 digests in constant time. Failed attempts are not rate limited.
+- There are no roles: a valid token grants every endpoint. There are no client certificates.
+- Prometheus: use `scheme: https`, `authorization: { credentials_file: ... }` and `tls_config: { ca_file: ... }`.
+- Kubernetes probes use `/health` (liveness) and `/health/ready` (readiness) with `scheme: HTTPS` when TLS is on.
+
+## Running hooks by hand
+
+`netevd trigger <event>` applies the same interface selector, filter decision, script policy and sandbox as `explain`, then
+runs the scripts and prints each status and captured output. It exits non-zero if any script failed or timed out. Scripts run
+as the invoking user, so it refuses to run as root unless `--allow-root` is given; use `sudo -u netevd` to match the daemon.
+`--from-file` replays journal lines, which **runs the scripts again** for every recorded event.

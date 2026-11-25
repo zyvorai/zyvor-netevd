@@ -28,17 +28,28 @@ data:
 
       networkmanager: {}
 
+    # Loopback only (the pod uses the host network). To let Prometheus or
+    # other hosts reach the API, mount a token and certificate from a Secret,
+    # set bind_address to "0.0.0.0" and enable the settings below; then change
+    # the probes in deployment.yaml to match (see docs/hardening.md).
     api:
       enabled: true
+      bind_address: "127.0.0.1"
       port: 9090
-      address: "0.0.0.0"
+      # auth:
+      #   token_file: /etc/netevd-api/token
+      #   public_metrics: false
+      # tls:
+      #   enabled: true
+      #   cert_file: /etc/netevd-api/tls.crt
+      #   key_file: /etc/netevd-api/tls.key
 
     metrics:
       enabled: true
 
     audit:
       enabled: true
-      log_path: "/var/log/netevd/audit.log"
+      path: "/var/log/netevd/audit.log"
 
     filters:
       - match_rule:
@@ -46,7 +57,7 @@ data:
           event_type: "routable"
         action: execute
         scripts:
-          - /etc/netevd/scripts/routable.d/01-k8s-notify.sh
+          - 01-k8s-notify.sh
 
       - match_rule:
           interface_pattern: "cni*"

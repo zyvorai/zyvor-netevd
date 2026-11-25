@@ -151,3 +151,33 @@ key tables or a hostile source can exhaust memory by inventing keys.
 - <https://nvd.nist.gov/vuln/detail/CVE-2026-10805> **[U]** (search result, not fetched)
 - <https://access.redhat.com/security/cve/CVE-2024-9050> **[U]** (search result, not fetched)
 - <https://docs.cilium.io/en/latest/configuration/api-rate-limiting/> **[U]** (search result, not fetched)
+
+## Third round: operating the daemon
+
+Pages fetched for this round:
+
+- networkd-broker (<https://github.com/bpetlert/networkd-broker>): per-state directories, root-owned executables, 20 s
+  default timeout, `-nowait` scripts, `--startup-triggers`. The README mentions no network API.
+- networkd-dispatcher man page (<https://manpages.debian.org/unstable/networkd-dispatcher/networkd-dispatcher.8.en.html>):
+  options are script directories, startup triggers and verbosity; no way to fire an event by hand is listed.
+- NetworkManager dispatcher (<https://networkmanager.dev/docs/api/latest/NetworkManager-dispatcher.html>): script stdout
+  is consumed by the dispatcher, so debugging output goes to stderr and the journal; `connectivity-change` and `dns-change`
+  actions exist.
+- Prometheus exporter-toolkit web configuration
+  (<https://github.com/prometheus/exporter-toolkit/blob/master/docs/web-configuration.md>): the shared expectation for
+  exporters is optional TLS (minimum TLS 1.2), client certificates and bcrypt basic auth.
+- Kubernetes, API server bypass risks (<https://kubernetes.io/docs/concepts/security/api-server-bypass-risks/>): node
+  agent APIs should refuse anonymous access, restrict the network path, and never expose an unauthenticated port.
+- adnanh/webhook rules (<https://github.com/adnanh/webhook/blob/master/docs/Hook-Rules.md>): HMAC payload checks and IP
+  allow-lists for event receivers.
+
+| Idea | Decision |
+|---|---|
+| TLS and token authentication on the API | Built. `api.tls` existed in the configuration but did nothing, which was the larger problem. Bearer tokens rather than bcrypt basic auth: machine clients, no password hashing cost, supported by Prometheus. |
+| HTTPS and token support in the CLI | Built, so the secured API stays usable. |
+| Truthful liveness and readiness | Built. |
+| Per-script results in journal, API and metrics | Built. Without them "did my hook work?" needed debug logs. |
+| Fire an event by hand (`netevd trigger`) | Built, local only. A remote trigger endpoint was rejected: it would turn API access into code execution. |
+| Client certificates, roles | Not built; a reverse proxy covers them. |
+| Outgoing signed webhooks | Not built; a hook script with `curl` and `openssl` does it without new network code in the daemon. |
+| `-nowait` / parallel scripts | Not built; `hooks.max_parallel` remains reserved. |

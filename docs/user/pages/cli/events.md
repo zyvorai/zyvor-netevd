@@ -50,7 +50,7 @@ netevd events -f -i eth0 -t routable
 5. Machine-readable output for automation:
 
 ```bash
-netevd events --tail 50 -f json --endpoint http://<host>:9090
+netevd events --tail 50 -o json --endpoint https://<host>:9090 --token-file ~/.netevd.token
 ```
 
 6. Cross-check hook side effects in the journal:
@@ -73,7 +73,9 @@ journalctl -u netevd -f
 ## Journal and replay
 
 Set `hooks.journal_path` to keep every dispatched event in a JSONL file (mode 0600, rotated once to `<path>.1`). Each line is a
-`netevd.event.v1` object plus `seq`, `outcome` (`dispatched`, `failed`, `rate-limited`), `duration_ms` and `error`:
+`netevd.event.v1` object plus `seq`, `outcome` (`dispatched`, `failed`, `rate-limited`), `duration_ms`, `error` and
+`scripts` (name, status, exit code, duration; never script output). `failed` means at least one script did not succeed:
+`netevd events --outcome failed` lists those.
 
 ```bash
 netevd explain --from-file /var/lib/netevd/events.jsonl

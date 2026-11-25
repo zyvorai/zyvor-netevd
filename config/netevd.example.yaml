@@ -67,9 +67,12 @@ api:
   bind_address: "127.0.0.1"  # Bind address (use 0.0.0.0 for all interfaces)
   port: 9090  # API server port
   tls:
-    enabled: false  # Enable TLS/SSL
-    cert_file: ""  # Path to TLS certificate
-    key_file: ""   # Path to TLS private key
+    enabled: false  # Serve HTTPS (TLS 1.2+). If enabled and unusable, the API does not start.
+    cert_file: ""  # Absolute path to the PEM certificate chain
+    key_file: ""   # Absolute path to the PEM private key (readable by the netevd user)
+  auth:
+    # token_file: /etc/netevd/api.token  # one bearer token per line, >= 16 chars, mode 0600/0640
+    public_metrics: false  # true: scrape /metrics without a token (/health never needs one)
 
 # Prometheus metrics configuration
 metrics:
